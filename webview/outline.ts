@@ -39,11 +39,11 @@ export function parseOutlineHeadings(markdown: string): OutlineHeading[] {
       continue;
     }
 
-    const atx = /^(#{1,6})[ \t]+(.+?)\s*#*\s*$/.exec(text);
+    const atx = parseAtxHeadingLine(text);
     if (atx) {
       headings.push({
-        level: atx[1].length as OutlineHeading['level'],
-        text: atx[2].trim(),
+        level: atx.level,
+        text: atx.text,
         from,
         line: lineNumber,
       });
@@ -75,6 +75,27 @@ export function parseOutlineHeadings(markdown: string): OutlineHeading[] {
   }
 
   return headings;
+}
+
+/**
+ * CommonMark-ish ATX: 0–3 leading spaces, 1–6 `#`, then whitespace (or EOL).
+ * A closing `#` run counts only when a space/tab precedes it.
+ */
+export function parseAtxHeadingLine(line: string): { level: OutlineHeading['level']; text: string } | undefined {
+  const match = /^( {0,3})(#{1,6})(.*)$/.exec(line);
+  if (!match) {
+    return undefined;
+  }
+  const rest = match[3];
+  if (rest.length > 0 && rest[0] !== ' ' && rest[0] !== '\t') {
+    return undefined;
+  }
+  let content = rest.replace(/^[ \t]+/, '').replace(/[ \t]+$/, '');
+  const closed = /^(.*?)[ \t]+#+$/.exec(content);
+  if (closed) {
+    content = closed[1].replace(/[ \t]+$/, '');
+  }
+  return { level: match[2].length as OutlineHeading['level'], text: content };
 }
 
 export function nestOutline(headings: readonly OutlineHeading[]): OutlineNode[] {
@@ -154,4 +175,19 @@ export function outlineDebounceMs(docLength: number): number {
 
 export function defaultOutlineOpen(enabled: boolean, wideEditor: boolean): boolean {
   return enabled && wideEditor;
+}
+
+/** Hide the outline below this editor-shell width so a 11rem rail cannot crush the surface. */
+export const OUTLINE_COLLAPSE_MAX_PX = 640;
+
+export function outlineAutoCollapsed(editorWidthPx: number): boolean {
+  return editorWidthPx <= OUTLINE_COLLAPSE_MAX_PX;
+}
+
+export function outlinePanelShouldRender(input: {
+  enabled: boolean;
+  open: boolean;
+  editorWidthPx: number;
+}): boolean {
+  return input.enabled && input.open && !outlineAutoCollapsed(input.editorWidthPx);
 }

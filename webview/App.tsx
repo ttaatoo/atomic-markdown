@@ -9,7 +9,14 @@ import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMa
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { CODE_LANGUAGES } from './languages';
 import { OutlinePanel } from './OutlinePanel';
-import { defaultOutlineOpen, outlineDebounceMs, outlineTreeFromMarkdown, type OutlineNode } from './outline';
+import {
+  defaultOutlineOpen,
+  outlineAutoCollapsed,
+  outlineDebounceMs,
+  outlinePanelShouldRender,
+  outlineTreeFromMarkdown,
+  type OutlineNode,
+} from './outline';
 import { fileToBase64, imageFilesFromDataTransfer, inferImageMime, nextImageRequestId } from './pasteImages';
 import {
   applyExternalMarkdown,
@@ -48,6 +55,9 @@ export function App() {
   const outlineSourceRef = useRef('');
   const outlineEnabledRef = useRef(true);
   const pendingImages = useRef(new Map<string, true>());
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const shellWidthRef = useRef(typeof window === 'undefined' ? 1200 : window.innerWidth);
+  const [shellWidth, setShellWidth] = useState(shellWidthRef.current);
 
   readOnlyRef.current = readOnly;
 
@@ -148,7 +158,12 @@ export function App() {
           break;
         case 'toggleOutline':
           if (outlineEnabledRef.current) {
-            setOutlineOpen((open) => !open);
+            setOutlineOpen((open) => {
+              if (!open && outlineAutoCollapsed(shellWidthRef.current)) {
+                return false;
+              }
+              return !open;
+            });
           }
           break;
         case 'imageSaved':
@@ -194,6 +209,26 @@ export function App() {
       attributes: true,
       attributeFilter: ['src'],
     });
+    return () => observer.disconnect();
+  }, [session]);
+
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (typeof width !== 'number') {
+        return;
+      }
+      shellWidthRef.current = width;
+      setShellWidth(width);
+      if (outlineAutoCollapsed(width)) {
+        setOutlineOpen(false);
+      }
+    });
+    observer.observe(el);
     return () => observer.disconnect();
   }, [session]);
 
@@ -308,7 +343,12 @@ export function App() {
   }, []);
 
   const onToggleOutline = useCallback(() => {
-    setOutlineOpen((open) => !open);
+    setOutlineOpen((open) => {
+      if (!open && outlineAutoCollapsed(shellWidthRef.current)) {
+        return false;
+      }
+      return !open;
+    });
   }, []);
 
   const onOutlineSelect = useCallback(
@@ -322,7 +362,11 @@ export function App() {
     return <div className="app" />;
   }
 
-  const showOutline = outlineEnabled && outlineOpen;
+  const showOutline = outlinePanelShouldRender({
+    enabled: outlineEnabled,
+    open: outlineOpen,
+    editorWidthPx: shellWidth,
+  });
 
   return (
     <div className="app">
@@ -335,7 +379,7 @@ export function App() {
           onToggleOutline={onToggleOutline}
         />
       ) : null}
-      <div className="editor-shell">
+      <div className="editor-shell" ref={shellRef}>
         {showOutline ? <OutlinePanel nodes={outlineNodes} onSelect={onOutlineSelect} /> : null}
         <AtomicCodeMirrorEditor
           documentId={session.uri}

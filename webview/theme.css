@@ -199,6 +199,8 @@ html.theme-plannotator .atomic-cm-editor {
   display: flex;
   min-height: 0;
   min-width: 0;
+  container-type: inline-size;
+  container-name: atomic-editor;
 }
 
 .editor-shell > .atomic-cm-editor {
@@ -256,14 +258,27 @@ html.theme-plannotator .atomic-cm-editor {
 }
 
 .outline-panel {
+  flex: 0 1 15.5rem;
   width: 15.5rem;
-  min-width: 11rem;
-  max-width: 20rem;
+  min-width: 0;
+  max-width: min(20rem, 40%);
   overflow: auto;
   border-right: 1px solid var(--border, var(--vscode-widget-border));
   background: var(--card, var(--vscode-editor-background));
   color: var(--card-foreground, var(--vscode-editor-foreground));
   padding: 0.55rem 0.35rem 0.75rem;
+}
+
+@container atomic-editor (max-width: 640px) {
+  .outline-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .outline-panel {
+    display: none;
+  }
 }
 
 .outline-panel-title {

@@ -55,4 +55,41 @@ describe('applyFormatToString', () => {
     const next = 'ab'.slice(0, patch.replaceFrom) + patch.insert + 'ab'.slice(patch.replaceTo);
     assert.equal(next, 'a![x](./a.png)b');
   });
+
+  it('preserves leading indentation when cycling a heading', () => {
+    const result = applyFormatToString('  Title', 2, 2, 'heading');
+    assert.equal(result.text, '  # Title');
+    assert.equal(result.from, 4);
+    assert.equal(result.to, 4);
+    assert.equal(applyFormatToString('    ### Nested', 0, 0, 'heading').text, '    Nested');
+  });
+
+  it('maps heading selection through the marker instead of selecting the whole line', () => {
+    const added = applyFormatToString('Title', 1, 4, 'heading');
+    assert.equal(added.text, '# Title');
+    assert.equal(added.text.slice(added.from, added.to), 'itl');
+    const promoted = applyFormatToString('# Title', 2, 7, 'heading');
+    assert.equal(promoted.text, '## Title');
+    assert.equal(promoted.text.slice(promoted.from, promoted.to), 'Title');
+  });
+
+  it('preserves nested list indentation and only changes the marker', () => {
+    const md = '- outer\n  inner';
+    const innerStart = md.indexOf('inner');
+    const listed = applyFormatToString(md, innerStart, innerStart + 5, 'bulletList');
+    assert.equal(listed.text, '- outer\n  - inner');
+    assert.equal(listed.text.slice(listed.from, listed.to), 'inner');
+    const stripped = applyFormatToString('- outer\n  - inner', innerStart + 2, innerStart + 7, 'bulletList');
+    assert.equal(stripped.text, '- outer\n  inner');
+    assert.equal(stripped.text.slice(stripped.from, stripped.to), 'inner');
+  });
+
+  it('maps a collapsed caret through a list marker on an indented line', () => {
+    const md = '    item';
+    const caret = md.indexOf('t');
+    const result = applyFormatToString(md, caret, caret, 'taskList');
+    assert.equal(result.text, '    - [ ] item');
+    assert.equal(result.from, result.to);
+    assert.equal(result.text[result.from], 't');
+  });
 });
