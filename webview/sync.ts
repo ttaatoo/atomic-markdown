@@ -3,11 +3,15 @@ import { EditorView, ViewPlugin } from '@codemirror/view';
 
 let view: EditorView | null = null;
 let applyingExternal = false;
+const viewReadyListeners = new Set<(current: EditorView) => void>();
 
 export const captureEditorView = ViewPlugin.fromClass(
   class {
     constructor(current: EditorView) {
       view = current;
+      for (const listener of viewReadyListeners) {
+        listener(current);
+      }
     }
 
     destroy(): void {
@@ -16,12 +20,23 @@ export const captureEditorView = ViewPlugin.fromClass(
   },
 );
 
-export function applyExternalMarkdown(text: string): void {
+export function onEditorViewReady(listener: (current: EditorView) => void): () => void {
+  viewReadyListeners.add(listener);
+  if (view) {
+    listener(view);
+  }
+  return () => {
+    viewReadyListeners.delete(listener);
+  };
+}
+
+/** @returns false when the view is not mounted — caller must keep the payload. */
+export function applyExternalMarkdown(text: string): boolean {
   if (!view) {
-    return;
+    return false;
   }
   if (view.state.doc.toString() === text) {
-    return;
+    return true;
   }
 
   applyingExternal = true;
@@ -33,6 +48,7 @@ export function applyExternalMarkdown(text: string): void {
   } finally {
     applyingExternal = false;
   }
+  return true;
 }
 
 export function isApplyingExternal(): boolean {

@@ -4,9 +4,15 @@ import {
 } from '@atomic-editor/editor';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HostToWebview } from '../src/protocol';
+import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { CODE_LANGUAGES } from './languages';
-import { applyExternalMarkdown, EXTRA_EXTENSIONS, isApplyingExternal } from './sync';
+import {
+  applyExternalMarkdown,
+  EXTRA_EXTENSIONS,
+  isApplyingExternal,
+  onEditorViewReady,
+} from './sync';
 import { observeWorkbenchTheme } from './theme';
 import { vscodeApi } from './vscodeApi';
 
@@ -21,11 +27,28 @@ export function App() {
   const [session, setSession] = useState<EditorSession | null>(null);
   const [readOnly, setReadOnly] = useState(false);
   const generationRef = useRef(0);
+  const pendingMarkdownRef = useRef<HostMarkdown | undefined>(undefined);
   const imageOptionsRef = useRef<ImageResolveOptions>({});
 
   useEffect(() => observeWorkbenchTheme(), []);
 
   useEffect(() => {
+    const flushPending = () => {
+      const pending = pendingMarkdownRef.current;
+      if (!pending) {
+        return;
+      }
+      if (pending.generation < generationRef.current) {
+        pendingMarkdownRef.current = undefined;
+        return;
+      }
+      if (applyExternalMarkdown(pending.text)) {
+        pendingMarkdownRef.current = undefined;
+      }
+    };
+
+    const unsubscribeView = onEditorViewReady(flushPending);
+
     const onMessage = (event: MessageEvent<HostToWebview>) => {
       const message = event.data;
       if (!message || typeof message !== 'object' || !('type' in message)) {
@@ -34,24 +57,38 @@ export function App() {
 
       switch (message.type) {
         case 'init': {
-          generationRef.current = message.generation;
           const imageOptions = {
             documentDirWebviewUri: message.documentDirWebviewUri,
             workspaceWebviewUri: message.workspaceWebviewUri,
           };
           imageOptionsRef.current = imageOptions;
+          const mount = markdownForMount(
+            { text: message.text, generation: message.generation },
+            pendingMarkdownRef.current,
+          );
+          generationRef.current = mount.generation;
+          pendingMarkdownRef.current = undefined;
           setReadOnly(message.readOnly);
           setSession({
             uri: message.uri,
-            text: message.text,
+            text: mount.text,
             imageOptions,
           });
           break;
         }
-        case 'setMarkdown':
-          generationRef.current = message.generation;
-          applyExternalMarkdown(message.text);
+        case 'setMarkdown': {
+          const incoming: HostMarkdown = { text: message.text, generation: message.generation };
+          const next = takeNewerMarkdown(pendingMarkdownRef.current, incoming, generationRef.current);
+          if (!next || next !== incoming) {
+            break;
+          }
+          generationRef.current = incoming.generation;
+          pendingMarkdownRef.current = incoming;
+          if (applyExternalMarkdown(incoming.text)) {
+            pendingMarkdownRef.current = undefined;
+          }
           break;
+        }
         case 'setReadOnly':
           setReadOnly(message.readOnly);
           break;
@@ -66,7 +103,10 @@ export function App() {
 
     window.addEventListener('message', onMessage);
     vscodeApi.postMessage({ type: 'ready' });
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      unsubscribeView();
+      window.removeEventListener('message', onMessage);
+    };
   }, []);
 
   useEffect(() => {

@@ -146,7 +146,7 @@
     "vscode:prepublish": "npm run compile -- --production",
     "compile": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit && node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "test": "node --experimental-strip-types --test src/text.test.ts src/links.test.ts webview/images.test.ts",
+    "test": "node --experimental-strip-types --test src/*.test.ts webview/*.test.ts",
     "package": "npm run compile -- --production && npx @vscode/vsce package --no-dependencies"
   },
   "dependencies": {
