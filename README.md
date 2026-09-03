@@ -4,24 +4,34 @@ A VS Code (and Cursor) custom editor that embeds [Atomic Editor](https://github.
 
 **Raw markdown on disk is the source of truth.** Decorations are view-only. Copy, save, and round-trip stay byte-identical to editing the file in a plain textarea (aside from preserving the file’s existing LF/CRLF style).
 
-The built-in text editor remains the default. This extension never takes over double-click or “Open” for `.md` files.
+The built-in text editor remains the default. This extension never takes over double-click or “Open” for `.md` files (`customEditors` priority is `option`).
+
+This is a **v0.1 preview**. It is not published to the Marketplace and collects no telemetry.
+
+## Screenshots
+
+Add captures from an F5 Extension Development Host here when you have them:
+
+- `docs/screenshots/editor.png` — edit mode with outline and compact toolbar
+- `docs/screenshots/reading.png` — reading mode
+- `docs/screenshots/mermaid.png` — mermaid fence rendered as SVG
 
 ## Install from a VSIX
-
-This v1 is meant to be installed locally (not published to the Marketplace).
 
 1. Download or build `atomic-markdown-0.1.0.vsix`.
 2. In VS Code / Cursor: **Extensions** → `⋯` → **Install from VSIX…**
 3. Reload the window if prompted.
 
-To build the VSIX yourself:
+To build the VSIX yourself (Node **22** — tests use `--experimental-strip-types`):
 
 ```bash
 npm install
+npm test
+npm run compile
 npm run package
 ```
 
-`npm install && npm run compile` typechecks and bundles the extension host plus the webview.
+`npm run compile` typechecks the extension host and webview, then bundles with esbuild. `npm run package` produces a production VSIX (`vsce --no-dependencies`).
 
 ## Open a Markdown file with Atomic Markdown
 
@@ -32,43 +42,89 @@ npm run package
    - Explorer context menu on a `.md` file → **Open with Atomic Markdown**
    - Tab context → **Reopen Editor With…** → **Atomic Markdown**
 
-The writing engine is [Atomic Editor](https://www.npmjs.com/package/@atomic-editor/editor) (`@atomic-editor/editor`) on CodeMirror 6. There is no vault, note graph, wiki `[[links]]`, Vim mode, or collaboration chrome — just a single-file writing surface.
+The writing engine is [Atomic Editor](https://www.npmjs.com/package/@atomic-editor/editor) (`@atomic-editor/editor`) on CodeMirror 6. There is no vault, note graph, wiki `[[links]]`, Vim mode, collaboration, or AI chrome — just a single-file writing surface.
 
-## Features (v1)
+`retainContextWhenHidden` keeps the editor mounted when you switch tabs so the CodeMirror view is not remounted on every hide. Closing the editor disposes listeners; opening it again starts a new session.
+
+You can open **two Atomic panels** on the same file (split), or keep the default **text editor plus Atomic** on the same document. Edits go through the VS Code `TextDocument` / `WorkspaceEdit` so the tab dirty state is shared.
+
+## Features (v0.1)
 
 - Inline live preview (syntax hides on inactive lines)
+- Compact formatting toolbar (hide with `atomicMarkdown.toolbar.enabled`) and shortcuts: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link (only while this custom editor is active)
+- Heading outline (目录结构) inside the webview — ATX `#`–`######` and setext H1/H2; view-only, never writes a `[TOC]` block
+- Paste or drop png/jpeg/gif/webp/svg images; the extension host saves them under `atomicMarkdown.images.directory` (default `assets` next to the Markdown file) and inserts a relative `![]()` at the caret
 - WYSIWYG tables
 - Clickable task checkboxes (`- [ ]` / `- [x]`)
-- Fence highlighting for ~20 languages (JavaScript, TypeScript, Python, Go, Rust, Ruby, Java, C/C++, PHP, Swift, Shell, SQL, HTML, CSS, XML, JSON, YAML, TOML, Dockerfile, Markdown)
-- Mermaid fenced blocks (`mermaid` info string) render as SVG diagrams (mermaid is bundled into the webview; no CDN). Invalid syntax shows an error in place. The fence text on disk is unchanged.
+- Fence highlighting for ~20 languages
+- Mermaid fenced blocks (`mermaid` info string) render as SVG (bundled; no CDN). Invalid syntax shows an inline error; the fence text on disk is unchanged and stays editable
 - Reading mode (editor title book icon, or **Atomic Markdown: Toggle Reading Mode**)
 - Find inside the editor (`Cmd/Ctrl+F`, or the title search icon)
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is
-- Plannotator default dark/light palettes on the writing surface (`atomicMarkdown.theme`, **Atomic Markdown: Toggle Light/Dark**)
+- Plannotator default dark/light palettes plus typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) applied live without remounting
 
 http(s) links open externally. Same-workspace `.md` links use `vscode.open` (usually the default text editor).
 
-## Theme
+## Image paste and drop
 
-The writing surface uses [Plannotator](https://github.com/backnotprop/plannotator)'s default dark and light oklch palettes, not the workbench editor chrome colors. `atomicMarkdown.theme` is `followVscode` (default), `dark`, or `light`. `followVscode` only picks which of those two palettes matches the current workbench kind. **Atomic Markdown: Toggle Light/Dark** (editor title sun/moon) writes `light` or `dark` to workspace settings when a folder is open, otherwise to user settings. Switching updates `data-theme` and the `theme-plannotator` class without remounting CodeMirror; mermaid diagrams follow the same side.
+In **edit** mode, pasting a clipboard image or dropping an image file:
+
+1. The webview asks the extension host to save the bytes (`vscode.workspace.fs`).
+2. The host writes a unique filename under `atomicMarkdown.images.directory` (default `assets`, relative to the Markdown file). Path traversal and absolute paths are rejected.
+3. The host returns a relative markdown snippet; the webview inserts it with a CodeMirror transaction (normal sync/undo).
+
+Untitled documents (or files without a writable directory) show an error and **do not** alter the clipboard. Save the `.md` file first.
+
+SVG is treated as untrusted image data: it is displayed with `<img>`, not executed.
+
+## Toolbar and shortcuts
+
+The toolbar is compact (markdown-ish labels, not a word processor). Set `atomicMarkdown.toolbar.enabled` to `false` to hide it. Formatting still works from the scoped keybindings above.
+
+Actions wrap the selection (or a placeholder) and leave a sensible caret. Heading cycles none → H1 → H2 → H3 → none. List buttons toggle bullet, numbered, and task prefixes.
+
+These shortcuts are scoped with `when: activeCustomEditorId == ttaatoo.atomicMarkdown` so they do not replace VS Code **Save**, **Close**, or the Command Palette.
+
+## Outline
+
+`atomicMarkdown.outline.enabled` (default `true`) allows a collapsible heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Toggle it from the editor title or the toolbar.
+
+Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The outline updates as you type (debounced on large documents). It never mutates the file.
+
+## Theme and typography
+
+The writing surface uses [Plannotator](https://github.com/backnotprop/plannotator)'s default dark and light oklch palettes, not the workbench editor chrome colors.
+
+| Setting | Default | Notes |
+| --- | --- | --- |
+| `atomicMarkdown.theme` | `followVscode` | `followVscode`, `dark`, or `light`. `followVscode` only picks which of the two Plannotator palettes matches the workbench. |
+| `atomicMarkdown.fontFamily` | `""` | Empty uses the Plannotator stack. |
+| `atomicMarkdown.fontSize` | `17` | Clamped 12–28. |
+| `atomicMarkdown.lineHeight` | `1.7` | Clamped 1.2–2.4. |
+| `atomicMarkdown.contentWidth` | `70` | Column measure in `ch`, clamped 40–120. |
+
+**Atomic Markdown: Toggle Light/Dark** is always available in the editor title while Atomic is active (including `followVscode`). It writes the **opposite of the currently resolved** light/dark palette as an explicit `light` or `dark` setting. Palette, font, and measure changes apply without remounting CodeMirror. Mermaid follows `data-theme`.
 
 ## Develop with F5
 
-1. `npm install`
+1. `npm install` (Node 22)
 2. Open this repository in VS Code / Cursor.
 3. Press **F5** to launch an Extension Development Host with the `samples/` folder.
 4. Open `welcome.md` → Command Palette → **Open with Atomic Markdown**.
-5. Type, toggle a checkbox, or edit a table cell. The tab should go dirty; **Save** writes the raw markdown. Undo/redo and dirty state stay on the VS Code text document.
+5. Type, toggle a checkbox, paste an image, or use the outline. The tab should go dirty; **Save** writes the raw markdown.
 
-`retainContextWhenHidden` keeps the editor mounted when you switch tabs so the CodeMirror view is not remounted on every keystroke or hide.
+Host-side undo/redo and dirty state live on the VS Code text document. See [docs/QA.md](docs/QA.md) for a manual checklist that cannot run in unit tests.
 
-## Not in v1
+## Known limitations
 
-- Default / double-click takeover of `.md` files
-- Wiki `[[links]]`, vaults, or a note graph
-- Paste-to-save-image
-- Marketplace publish or telemetry
+- Preview / v0.1: not a Marketplace release; no telemetry
+- Does not become the default editor for `.md` files
+- No wiki `[[links]]`, vault, graph, collaboration, or AI
+- Invalid mermaid is shown as an inline error in the live preview; this environment’s unit tests cover fence parsing and error-message shaping, not `mermaid.render` itself
+- VS Code document undo (as opposed to CodeMirror’s own undo while focused in Atomic) is verified by the echo/non-echo sync helpers plus the F5 checklist, not by a VS Code-host integration test in CI
+- Image paste requires a saved file with a writable directory
+- Outline is headings only; it does not insert `[TOC]`
 
 ## License
 
-MIT. Atomic Editor is also MIT.
+MIT. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

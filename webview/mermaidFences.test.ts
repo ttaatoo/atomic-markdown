@@ -137,4 +137,12 @@ describe('mermaid helpers', () => {
     assert.equal(mermaidErrorMessage('nope'), 'nope');
     assert.equal(mermaidErrorMessage({}), 'Invalid mermaid diagram');
   });
+
+  it('keeps invalid mermaid source in the fence body so the document stays editable', () => {
+    const md = '```mermaid\nthis is not a diagram\n```\n';
+    const ranges = findMermaidFenceRanges(md);
+    assert.equal(ranges.length, 1);
+    assert.equal(ranges[0]?.body, 'this is not a diagram');
+    assert.equal(md.includes('this is not a diagram'), true);
+  });
 });

@@ -173,3 +173,157 @@ html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
   font-size: 0.85em;
   white-space: pre-wrap;
 }
+
+html {
+  --atomic-user-size: 17px;
+  --atomic-user-leading: 1.7;
+  --atomic-user-measure: 70ch;
+}
+
+html.theme-plannotator .atomic-cm-editor {
+  --atomic-editor-font: var(--atomic-user-font, var(--font-sans));
+}
+
+.atomic-cm-editor .cm-scroller {
+  justify-content: center;
+}
+
+.atomic-cm-editor .cm-content {
+  max-width: var(--atomic-user-measure, 70ch);
+  font-size: var(--atomic-user-size, 17px);
+  line-height: var(--atomic-user-leading, 1.7);
+}
+
+.editor-shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.editor-shell > .atomic-cm-editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.atomic-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.2rem 0.45rem;
+  border-bottom: 1px solid var(--border, var(--vscode-widget-border));
+  background: var(--card, var(--vscode-editor-background));
+}
+
+.atomic-toolbar-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+}
+
+.atomic-toolbar-btn:hover:not(:disabled) {
+  background: var(--muted, var(--vscode-toolbar-hoverBackground));
+  color: var(--foreground, var(--vscode-editor-foreground));
+}
+
+.atomic-toolbar-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.atomic-toolbar-btn[aria-pressed='true'] {
+  color: var(--primary, var(--vscode-focusBorder));
+  background: color-mix(in oklch, var(--primary, #888) 16%, transparent);
+}
+
+.atomic-toolbar-sep {
+  width: 1px;
+  height: 1rem;
+  margin: 0 0.2rem;
+  background: var(--border, var(--vscode-widget-border));
+}
+
+.outline-panel {
+  width: 15.5rem;
+  min-width: 11rem;
+  max-width: 20rem;
+  overflow: auto;
+  border-right: 1px solid var(--border, var(--vscode-widget-border));
+  background: var(--card, var(--vscode-editor-background));
+  color: var(--card-foreground, var(--vscode-editor-foreground));
+  padding: 0.55rem 0.35rem 0.75rem;
+}
+
+.outline-panel-title {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  padding: 0.15rem 0.45rem 0.45rem;
+}
+
+.outline-empty {
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.8rem;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.outline-list .outline-list {
+  padding-left: 0.65rem;
+}
+
+.outline-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  padding: 0.22rem 0.45rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.outline-item:hover {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+}
+
+.outline-level-1 { font-weight: 650; }
+.outline-level-2 { padding-left: 0.7rem; }
+.outline-level-3 { padding-left: 1.05rem; }
+.outline-level-4 { padding-left: 1.4rem; }
+.outline-level-5 { padding-left: 1.75rem; }
+.outline-level-6 { padding-left: 2.1rem; }
+
+.atomic-toolbar-btn:focus-visible,
+.outline-item:focus-visible {
+  outline: 2px solid var(--ring, var(--vscode-focusBorder));
+  outline-offset: 1px;
+}

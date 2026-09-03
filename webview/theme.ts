@@ -1,3 +1,4 @@
+import type { AppearanceSettings } from '../src/appearance.ts';
 import {
   resolvePaletteKind,
   type PaletteKind,
@@ -17,6 +18,34 @@ export function applyPaletteToRoot(
   root.classList.add('theme-plannotator');
   root.classList.toggle('light', palette === 'light');
   root.dataset.theme = palette;
+}
+
+export function appearanceCssVars(settings: AppearanceSettings): Record<string, string | null> {
+  return {
+    '--atomic-user-font': settings.fontFamily || null,
+    '--atomic-user-size': `${settings.fontSize}px`,
+    '--atomic-user-leading': String(settings.lineHeight),
+    '--atomic-user-measure': `${settings.contentWidthCh}ch`,
+  };
+}
+
+export function applyAppearanceVars(
+  style: { setProperty(name: string, value: string): void; removeProperty(name: string): void },
+  settings: AppearanceSettings,
+): void {
+  const vars = appearanceCssVars(settings);
+  for (const [name, value] of Object.entries(vars)) {
+    if (value === null) {
+      style.removeProperty(name);
+    } else {
+      style.setProperty(name, value);
+    }
+  }
+}
+
+export function applyAppearance(settings: AppearanceSettings): void {
+  applyThemeSetting(settings.theme);
+  applyAppearanceVars(document.documentElement.style, settings);
 }
 
 export function applyThemeSetting(setting: ThemeSetting): PaletteKind {

@@ -25,9 +25,8 @@ export function hasRejectedMediaScheme(src: string): boolean {
  * Allowlisted absolute URIs pass through; relative paths join the
  * document directory's asWebviewUri; leading "/" is workspace-root.
  *
- * Returns `undefined` when the src is a rejected scheme (`javascript:`,
- * `file:`, …) or when URL joining fails — callers must not write that
- * onto `img.src`.
+ * SVG files are displayed with <img src> after this rewrite. That is
+ * untrusted image data (no script execution). Do not inline SVG markup.
  */
 export function resolveImageSrc(src: string, options: ImageResolveOptions): string | undefined {
   const trimmed = src.trim();

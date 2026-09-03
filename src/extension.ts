@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import {
   COMMAND_FIND,
+  COMMAND_FORMAT,
   COMMAND_OPEN,
   COMMAND_TOGGLE_LIGHT_DARK,
+  COMMAND_TOGGLE_OUTLINE,
   COMMAND_TOGGLE_READING_MODE,
   VIEW_TYPE,
 } from './constants';
@@ -36,6 +38,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand(COMMAND_TOGGLE_LIGHT_DARK, () => {
       void provider.toggleLightDark();
+    }),
+    vscode.commands.registerCommand(COMMAND_FORMAT, (action?: unknown) => {
+      provider.format(action);
+    }),
+    vscode.commands.registerCommand(COMMAND_TOGGLE_OUTLINE, () => {
+      provider.toggleOutline();
     }),
   );
 }

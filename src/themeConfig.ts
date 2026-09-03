@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { appearanceFromConfig, type AppearanceSettings } from './appearance';
 import {
   parseThemeSetting,
   resolvePaletteKind,
@@ -10,6 +11,11 @@ import {
 
 export function readThemeSetting(): ThemeSetting {
   return parseThemeSetting(vscode.workspace.getConfiguration('atomicMarkdown').get('theme'));
+}
+
+export function readAppearance(): AppearanceSettings {
+  const cfg = vscode.workspace.getConfiguration('atomicMarkdown');
+  return appearanceFromConfig((key) => cfg.get(key), readThemeSetting());
 }
 
 export function workbenchIsLight(): boolean {

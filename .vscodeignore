@@ -1,8 +1,10 @@
+.github/**
 .vscode/**
 .vscode-test/**
 src/**
 webview/**
 samples/**
+docs/**
 **/*.ts
 **/*.tsx
 **/*.map

@@ -19,9 +19,11 @@
   },
   "homepage": "https://github.com/ttaatoo/atomic-markdown#readme",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.85.0",
+    "node": ">=22.0.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
   "keywords": [
@@ -30,14 +32,18 @@
     "live preview",
     "obsidian",
     "atomic",
-    "codemirror"
+    "codemirror",
+    "mermaid",
+    "outline"
   ],
   "activationEvents": [
     "onCustomEditor:ttaatoo.atomicMarkdown",
     "onCommand:atomicMarkdown.open",
     "onCommand:atomicMarkdown.toggleReadingMode",
     "onCommand:atomicMarkdown.find",
-    "onCommand:atomicMarkdown.toggleLightDark"
+    "onCommand:atomicMarkdown.toggleLightDark",
+    "onCommand:atomicMarkdown.format",
+    "onCommand:atomicMarkdown.toggleOutline"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -70,6 +76,47 @@
           ],
           "default": "followVscode",
           "description": "Writing-surface palette. Always Plannotator's default dark/light oklch tokens. followVscode only chooses which of those two palettes matches the current workbench."
+        },
+        "atomicMarkdown.fontFamily": {
+          "type": "string",
+          "default": "",
+          "description": "CSS font-family for the writing surface. Empty uses the Plannotator stack (Inter / system-ui)."
+        },
+        "atomicMarkdown.fontSize": {
+          "type": "number",
+          "default": 17,
+          "minimum": 12,
+          "maximum": 28,
+          "description": "Font size in pixels for the writing surface (12–28, default 17)."
+        },
+        "atomicMarkdown.lineHeight": {
+          "type": "number",
+          "default": 1.7,
+          "minimum": 1.2,
+          "maximum": 2.4,
+          "description": "Unitless line-height for the writing surface (1.2–2.4, default 1.7)."
+        },
+        "atomicMarkdown.contentWidth": {
+          "type": "number",
+          "default": 70,
+          "minimum": 40,
+          "maximum": 120,
+          "description": "Maximum measure of the writing column in `ch` (40–120, default 70)."
+        },
+        "atomicMarkdown.toolbar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the compact formatting toolbar above the editor."
+        },
+        "atomicMarkdown.outline.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the heading outline panel inside the editor. Off never shows the outline and does not write a [TOC] into the file."
+        },
+        "atomicMarkdown.images.directory": {
+          "type": "string",
+          "default": "assets",
+          "description": "Directory for pasted or dropped images, relative to the Markdown file. Default `assets`. Absolute paths and `..` are rejected."
         }
       }
     },
@@ -97,6 +144,17 @@
         "title": "Toggle Light/Dark",
         "category": "Atomic Markdown",
         "icon": "$(color-mode)"
+      },
+      {
+        "command": "atomicMarkdown.toggleOutline",
+        "title": "Toggle Outline",
+        "category": "Atomic Markdown",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "title": "Format Selection",
+        "category": "Atomic Markdown"
       }
     ],
     "menus": {
@@ -116,6 +174,14 @@
         {
           "command": "atomicMarkdown.toggleLightDark",
           "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+        },
+        {
+          "command": "atomicMarkdown.toggleOutline",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.outlineEnabled"
+        },
+        {
+          "command": "atomicMarkdown.format",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -142,16 +208,16 @@
           "group": "navigation@2"
         },
         {
-          "command": "atomicMarkdown.toggleLightDark",
-          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.palette == dark",
+          "command": "atomicMarkdown.toggleOutline",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.outlineEnabled",
           "group": "navigation@3",
-          "icon": "$(sun)"
+          "icon": "$(list-tree)"
         },
         {
           "command": "atomicMarkdown.toggleLightDark",
-          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.palette == light",
-          "group": "navigation@3",
-          "icon": "$(moon)"
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown",
+          "group": "navigation@4",
+          "icon": "$(color-mode)"
         }
       ],
       "editor/title/context": [
@@ -182,6 +248,27 @@
         "key": "ctrl+f",
         "mac": "cmd+f",
         "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "args": "bold",
+        "key": "ctrl+b",
+        "mac": "cmd+b",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "args": "italic",
+        "key": "ctrl+i",
+        "mac": "cmd+i",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "args": "link",
+        "key": "ctrl+k",
+        "mac": "cmd+k",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode"
       }
     ]
   },

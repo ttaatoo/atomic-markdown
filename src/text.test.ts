@@ -16,4 +16,15 @@ describe('text helpers', () => {
     assert.equal(sameMarkdown('hello\r\nworld', 'hello\nworld'), true);
     assert.equal(sameMarkdown('hello\nworld', 'hello\nworld!'), false);
   });
+
+  it('round-trips a generated ~1.5MB document through LF and CRLF without changing characters', () => {
+    const lf = `${'# Heading\n\n'}${'paragraph text with some words.\n'.repeat(50_000)}`;
+    assert.ok(lf.length >= 1_000_000, `fixture too small: ${lf.length}`);
+    assert.ok(lf.length <= 5_000_000, `fixture too large: ${lf.length}`);
+    const crlf = toDocumentEol(lf, '\r\n');
+    assert.equal(crlf.includes('\r\n'), true);
+    assert.equal(toLineFeed(crlf), lf);
+    assert.equal(toDocumentEol(crlf, '\n'), lf);
+    assert.equal(sameMarkdown(lf, crlf), true);
+  });
 });

@@ -130,3 +130,55 @@ describe('planAfterApplyEdit', () => {
     );
   });
 });
+
+describe('overlapping generations and undo-shaped document changes', () => {
+  it('drops an earlier in-flight generation after a later one has committed', () => {
+    const first = planWebviewEdit({
+      incomingGeneration: 5,
+      sessionGeneration: 4,
+      incomingText: 'aaaa',
+      documentText: 'old',
+      eol: '\n',
+    });
+    assert.equal(first.type, 'apply');
+
+    const later = planWebviewEdit({
+      incomingGeneration: 6,
+      sessionGeneration: 5,
+      incomingText: 'bbbb',
+      documentText: 'aaaa',
+      eol: '\n',
+    });
+    assert.deepEqual(later, { type: 'apply', nextText: 'bbbb' });
+
+    const stale = planWebviewEdit({
+      incomingGeneration: 5,
+      sessionGeneration: 6,
+      incomingText: 'aaaa',
+      documentText: 'bbbb',
+      eol: '\n',
+    });
+    assert.equal(stale.type, 'drop-stale');
+  });
+
+  it('treats a document undo (text reverted away from lastApplied) as a non-echo', () => {
+    assert.equal(isEchoDocumentChange('old contents', 'new contents'), false);
+  });
+
+  it('plans a full-document replace for a generated large markdown string', () => {
+    const incomingText = `${'# Title\n\n'}${'word '.repeat(220_000)}`;
+    assert.ok(incomingText.length >= 1_000_000);
+    assert.ok(incomingText.length <= 5_000_000);
+    const plan = planWebviewEdit({
+      incomingGeneration: 1,
+      sessionGeneration: 0,
+      incomingText,
+      documentText: '',
+      eol: '\n',
+    });
+    assert.equal(plan.type, 'apply');
+    if (plan.type === 'apply') {
+      assert.equal(plan.nextText.length, incomingText.length);
+    }
+  });
+});

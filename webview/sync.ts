@@ -1,10 +1,12 @@
 import { Transaction } from '@codemirror/state';
-import { EditorView, ViewPlugin } from '@codemirror/view';
+import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { applyFormat, insertSnippet, type FormatAction } from './format';
 import { mermaidBlocks } from './mermaidBlocks';
 
 let view: EditorView | null = null;
 let applyingExternal = false;
 const viewReadyListeners = new Set<(current: EditorView) => void>();
+const documentTextListeners = new Set<(text: string) => void>();
 
 export const captureEditorView = ViewPlugin.fromClass(
   class {
@@ -12,6 +14,20 @@ export const captureEditorView = ViewPlugin.fromClass(
       view = current;
       for (const listener of viewReadyListeners) {
         listener(current);
+      }
+      const text = current.state.doc.toString();
+      for (const listener of documentTextListeners) {
+        listener(text);
+      }
+    }
+
+    update(update: ViewUpdate): void {
+      if (!update.docChanged) {
+        return;
+      }
+      const text = update.state.doc.toString();
+      for (const listener of documentTextListeners) {
+        listener(text);
       }
     }
 
@@ -28,6 +44,16 @@ export function onEditorViewReady(listener: (current: EditorView) => void): () =
   }
   return () => {
     viewReadyListeners.delete(listener);
+  };
+}
+
+export function onDocumentText(listener: (text: string) => void): () => void {
+  documentTextListeners.add(listener);
+  if (view) {
+    listener(view.state.doc.toString());
+  }
+  return () => {
+    documentTextListeners.delete(listener);
   };
 }
 
@@ -54,6 +80,57 @@ export function applyExternalMarkdown(text: string): boolean {
 
 export function isApplyingExternal(): boolean {
   return applyingExternal;
+}
+
+export function dispatchFormat(action: FormatAction): boolean {
+  if (!view || view.state.readOnly) {
+    return false;
+  }
+  const sel = view.state.selection.main;
+  const text = view.state.doc.toString();
+  const patch = applyFormat(text, sel.from, sel.to, action);
+  view.dispatch({
+    changes: { from: patch.replaceFrom, to: patch.replaceTo, insert: patch.insert },
+    selection: { anchor: patch.selectionFrom, head: patch.selectionTo },
+    scrollIntoView: true,
+  });
+  view.focus();
+  return true;
+}
+
+export function insertSnippetAtSelection(snippet: string): boolean {
+  if (!view || view.state.readOnly) {
+    return false;
+  }
+  const sel = view.state.selection.main;
+  const text = view.state.doc.toString();
+  const patch = insertSnippet(text, sel.from, sel.to, snippet);
+  view.dispatch({
+    changes: { from: patch.replaceFrom, to: patch.replaceTo, insert: patch.insert },
+    selection: { anchor: patch.selectionFrom, head: patch.selectionTo },
+    scrollIntoView: true,
+  });
+  view.focus();
+  return true;
+}
+
+export function revealOffset(offset: number, moveCaret: boolean): boolean {
+  if (!view) {
+    return false;
+  }
+  const pos = Math.max(0, Math.min(offset, view.state.doc.length));
+  if (moveCaret) {
+    view.dispatch({
+      selection: { anchor: pos },
+      scrollIntoView: true,
+    });
+    view.focus();
+  } else {
+    view.dispatch({
+      effects: EditorView.scrollIntoView(pos, { y: 'start' }),
+    });
+  }
+  return true;
 }
 
 export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks()];

@@ -1,9 +1,15 @@
 import * as vscode from 'vscode';
-import { CONTEXT_PALETTE, CONTEXT_READING_MODE, SETTING_THEME, VIEW_TYPE } from './constants';
-import type { HostToWebview, WebviewToHost } from './protocol';
+import { CONTEXT_OUTLINE, CONTEXT_PALETTE, CONTEXT_READING_MODE, SETTING_ROOT, VIEW_TYPE } from './constants';
 import { renderWebviewHtml } from './html';
-import { currentPaletteKind, readThemeSetting, themeUpdateTarget } from './themeConfig';
-import { nextExplicitTheme } from './themeSetting';
+import {
+  decodeBase64Bytes,
+  IMAGE_SAVE_MAX_BYTES,
+  planSavedImagePath,
+  untitledImageError,
+} from './imageSave';
+import type { HostToWebview, WebviewToHost } from './protocol';
+import { isFormatAction } from './protocol';
+import { addSession, removeSession } from './sessionMap';
 import {
   isEchoDocumentChange,
   planAfterApplyEdit,
@@ -11,6 +17,8 @@ import {
   shouldAbortApplyBecauseDocumentMoved,
 } from './sync';
 import { toLineFeed } from './text';
+import { currentPaletteKind, readAppearance, themeUpdateTarget } from './themeConfig';
+import { nextExplicitTheme } from './themeSetting';
 import {
   collectLocalResourceRoots,
   documentDirectory,
@@ -29,8 +37,8 @@ interface DocumentSession {
 }
 
 export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProvider {
-  private readonly sessions = new Map<string, DocumentSession>();
-  private activeDocumentUri: string | undefined;
+  private readonly sessions = new Map<string, DocumentSession[]>();
+  private active: DocumentSession | undefined;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -41,20 +49,20 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
         webviewOptions: {
           retainContextWhenHidden: true,
         },
-        supportsMultipleEditorsPerDocument: false,
+        supportsMultipleEditorsPerDocument: true,
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (!event.affectsConfiguration(SETTING_THEME)) {
+        if (!event.affectsConfiguration(SETTING_ROOT)) {
           return;
         }
-        provider.broadcastTheme();
-        provider.updatePaletteContext();
+        provider.broadcastAppearance();
+        provider.updateUiContext();
       }),
       vscode.window.onDidChangeActiveColorTheme(() => {
-        provider.updatePaletteContext();
+        provider.updateUiContext();
       }),
     );
-    provider.updatePaletteContext();
+    provider.updateUiContext();
     return provider;
   }
 
@@ -79,8 +87,8 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       readOnly,
       messageQueue: Promise.resolve(),
     };
-    this.sessions.set(key, session);
-    this.setActive(document.uri, session);
+    addSession(this.sessions, key, session);
+    this.setActive(session, document.uri);
 
     const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((event) => {
       if (event.document.uri.toString() !== key) {
@@ -89,17 +97,14 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       this.forwardDocumentChange(session, event.document);
     });
 
-    // Subscribe before assigning html so a fast `ready` from the webview is not missed.
-    // Serialize handlers: VS Code does not, and overlapping applyEdit calls
-    // would otherwise clear echo state while another write is in flight.
     const messageSubscription = webviewPanel.webview.onDidReceiveMessage((raw: WebviewToHost) => {
       this.enqueue(session, () => this.onMessage(document, session, raw));
     });
 
     const viewStateSubscription = webviewPanel.onDidChangeViewState(() => {
       if (webviewPanel.active) {
-        this.setActive(document.uri, session);
-      } else if (this.activeDocumentUri === key) {
+        this.setActive(session, document.uri);
+      } else if (this.active === session) {
         void vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, false);
       }
     });
@@ -108,9 +113,9 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       changeDocumentSubscription.dispose();
       messageSubscription.dispose();
       viewStateSubscription.dispose();
-      this.sessions.delete(key);
-      if (this.activeDocumentUri === key) {
-        this.activeDocumentUri = undefined;
+      removeSession(this.sessions, key, session);
+      if (this.active === session) {
+        this.active = undefined;
         void vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, false);
       }
     });
@@ -127,19 +132,24 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     await vscode.workspace.getConfiguration('atomicMarkdown').update('theme', next, themeUpdateTarget());
   }
 
-  broadcastTheme(): void {
-    const theme = readThemeSetting();
-    for (const session of this.sessions.values()) {
-      this.post(session, { type: 'setTheme', theme });
+  broadcastAppearance(): void {
+    const appearance = readAppearance();
+    for (const list of this.sessions.values()) {
+      for (const session of list) {
+        this.post(session, { type: 'setAppearance', appearance });
+      }
     }
+    this.updateUiContext();
   }
 
-  updatePaletteContext(): void {
+  updateUiContext(): void {
+    const appearance = readAppearance();
     void vscode.commands.executeCommand('setContext', CONTEXT_PALETTE, currentPaletteKind());
+    void vscode.commands.executeCommand('setContext', CONTEXT_OUTLINE, appearance.outlineEnabled);
   }
 
   toggleReadingMode(): void {
-    const session = this.activeSession();
+    const session = this.active;
     if (!session) {
       return;
     }
@@ -147,11 +157,26 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
   }
 
   findInEditor(): void {
-    const session = this.activeSession();
+    const session = this.active;
     if (!session) {
       return;
     }
     this.post(session, { type: 'openSearch' });
+  }
+
+  format(action: unknown): void {
+    if (!isFormatAction(action) || !this.active) {
+      return;
+    }
+    this.post(this.active, { type: 'format', action });
+  }
+
+  toggleOutline(): void {
+    const session = this.active;
+    if (!session) {
+      return;
+    }
+    this.post(session, { type: 'toggleOutline' });
   }
 
   private enqueue(session: DocumentSession, work: () => Promise<void>): void {
@@ -196,11 +221,95 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
           this.readOnlyStateKey(document.uri.toString()),
           message.readOnly,
         );
-        if (this.activeDocumentUri === document.uri.toString()) {
+        if (this.active === session) {
           await vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, message.readOnly);
         }
         return;
+      case 'saveImage':
+        await this.saveImage(document, session, message);
+        return;
     }
+  }
+
+  private async saveImage(
+    document: vscode.TextDocument,
+    session: DocumentSession,
+    message: Extract<WebviewToHost, { type: 'saveImage' }>,
+  ): Promise<void> {
+    const fail = (text: string) => {
+      void vscode.window.showErrorMessage(text);
+      this.post(session, { type: 'imageSaveFailed', requestId: message.requestId, message: text });
+    };
+
+    const dir = documentDirectory(document);
+    if (!dir) {
+      fail(untitledImageError());
+      return;
+    }
+
+    let bytes: Uint8Array;
+    try {
+      bytes = decodeBase64Bytes(message.base64);
+    } catch {
+      fail('Could not read the image data.');
+      return;
+    }
+    if (bytes.byteLength === 0) {
+      fail('The image was empty.');
+      return;
+    }
+    if (bytes.byteLength > IMAGE_SAVE_MAX_BYTES) {
+      fail(`Image is too large (max ${Math.round(IMAGE_SAVE_MAX_BYTES / (1024 * 1024))} MB).`);
+      return;
+    }
+
+    const directorySetting = vscode.workspace.getConfiguration('atomicMarkdown').get('images.directory');
+    let existing: string[] = [];
+    const plannedFirst = planSavedImagePath({
+      directorySetting,
+      mime: message.mime,
+      basename: message.basename,
+      existingNames: [],
+      now: new Date(),
+    });
+    if (!plannedFirst.ok) {
+      fail(plannedFirst.reason);
+      return;
+    }
+
+    const folder = vscode.Uri.joinPath(dir, ...plannedFirst.directory.split('/'));
+    try {
+      await vscode.workspace.fs.createDirectory(folder);
+    } catch {
+      // Already exists, or create is recursive and raced — listing below is the source of truth.
+    }
+    try {
+      existing = (await vscode.workspace.fs.readDirectory(folder)).map(([name]) => name);
+    } catch {
+      existing = [];
+    }
+
+    const planned = planSavedImagePath({
+      directorySetting,
+      mime: message.mime,
+      basename: message.basename,
+      existingNames: existing,
+      now: new Date(),
+    });
+    if (!planned.ok) {
+      fail(planned.reason);
+      return;
+    }
+
+    const dest = vscode.Uri.joinPath(folder, planned.filename);
+    try {
+      await vscode.workspace.fs.writeFile(dest, bytes);
+    } catch (error) {
+      fail(error instanceof Error ? error.message : 'Could not write the image file.');
+      return;
+    }
+
+    this.post(session, { type: 'imageSaved', requestId: message.requestId, markdown: planned.snippet });
   }
 
   private async applyWebviewEdit(
@@ -279,6 +388,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     const workspaceFolder =
       vscode.workspace.getWorkspaceFolder(document.uri) ?? vscode.workspace.workspaceFolders?.[0];
     const text = toLineFeed(document.getText());
+    const appearance = readAppearance();
     return {
       type: 'init',
       uri: document.uri.toString(),
@@ -287,7 +397,8 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       generation: session.generation,
       documentDirWebviewUri: webviewDirUri(session.panel.webview, documentDirectory(document)),
       workspaceWebviewUri: webviewDirUri(session.panel.webview, workspaceFolder?.uri),
-      theme: readThemeSetting(),
+      theme: appearance.theme,
+      appearance,
     };
   }
 
@@ -298,17 +409,11 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     void session.panel.webview.postMessage(message);
   }
 
-  private setActive(uri: vscode.Uri, session: DocumentSession): void {
-    this.activeDocumentUri = uri.toString();
+  private setActive(session: DocumentSession, uri: vscode.Uri): void {
+    this.active = session;
+    void uri;
     void vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, session.readOnly);
-    this.updatePaletteContext();
-  }
-
-  private activeSession(): DocumentSession | undefined {
-    if (!this.activeDocumentUri) {
-      return undefined;
-    }
-    return this.sessions.get(this.activeDocumentUri);
+    this.updateUiContext();
   }
 
   private readOnlyStateKey(documentUri: string): string {
