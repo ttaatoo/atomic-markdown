@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 import * as esbuild from 'esbuild';
 import { mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+
+const require = createRequire(import.meta.url);
+// mermaid's package root lazy-imports per-diagram chunks; those URLs 404
+// under the webview CSP. Point at the prebundled ESM build so esbuild
+// inlines it into a single webview.js (no CDN, no extra script tags).
+const mermaidBundled = join(dirname(require.resolve('mermaid/package.json')), 'dist/mermaid.esm.min.mjs');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -33,6 +41,9 @@ const webviewOptions = {
   logLevel: 'info',
   sourcesContent: false,
   jsx: 'automatic',
+  alias: {
+    mermaid: mermaidBundled,
+  },
   // Statically include language grammars so webview dynamic import()
   // never 404s under the extension CSP.
   define: {

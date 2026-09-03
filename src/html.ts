@@ -4,6 +4,11 @@ export function renderWebviewHtml(webview: vscode.Webview, extensionUri: vscode.
   const nonce = createNonce();
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
   const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
+  // Mermaid is bundled into webview.js (see esbuild alias). We do not add
+  // 'unsafe-eval' or worker-src: mermaid 11.17's only Function() calls are
+  // unused lodash `Function("return this")` fallbacks (webview has `self`),
+  // and the flattened bundle has no `new Worker`. style-src already allows
+  // 'unsafe-inline' for mermaid's SVG <style> blocks.
   const csp = [
     `default-src 'none'`,
     `img-src ${webview.cspSource} https: http: data:`,

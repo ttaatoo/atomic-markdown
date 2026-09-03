@@ -66,3 +66,38 @@ body,
   --atomic-editor-hl-operator: var(--vscode-symbolIcon-operatorForeground, var(--vscode-editor-foreground));
   --atomic-editor-hl-invalid: var(--vscode-debugTokenExpression-error);
 }
+
+.cm-atomic-mermaid {
+  margin: 0.65em 0;
+  padding: 0.75em 0.85em;
+  overflow-x: auto;
+  border: 1px solid var(--vscode-widget-border, var(--atomic-editor-border));
+  border-radius: 6px;
+  background: var(--vscode-editor-background, var(--atomic-editor-bg));
+}
+
+.cm-atomic-mermaid-clickable {
+  cursor: pointer;
+}
+
+.cm-atomic-mermaid-inner {
+  min-height: 2em;
+}
+
+.cm-atomic-mermaid-inner svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.cm-atomic-mermaid-pending {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+}
+
+.cm-atomic-mermaid-error {
+  color: var(--vscode-errorForeground, #f14c4c);
+  font-family: var(--vscode-editor-font-family, ui-monospace, monospace);
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}

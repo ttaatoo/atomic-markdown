@@ -1,5 +1,6 @@
 import { Transaction } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
+import { mermaidBlocks } from './mermaidBlocks';
 
 let view: EditorView | null = null;
 let applyingExternal = false;
@@ -55,4 +56,4 @@ export function isApplyingExternal(): boolean {
   return applyingExternal;
 }
 
-export const EXTRA_EXTENSIONS = [captureEditorView];
+export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks()];

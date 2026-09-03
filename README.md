@@ -40,6 +40,7 @@ The writing engine is [Atomic Editor](https://www.npmjs.com/package/@atomic-edit
 - WYSIWYG tables
 - Clickable task checkboxes (`- [ ]` / `- [x]`)
 - Fence highlighting for ~20 languages (JavaScript, TypeScript, Python, Go, Rust, Ruby, Java, C/C++, PHP, Swift, Shell, SQL, HTML, CSS, XML, JSON, YAML, TOML, Dockerfile, Markdown)
+- Mermaid fenced blocks (`mermaid` info string) render as SVG diagrams (mermaid is bundled into the webview; no CDN). Invalid syntax shows an error in place. The fence text on disk is unchanged.
 - Reading mode (editor title book icon, or **Atomic Markdown: Toggle Reading Mode**)
 - Find inside the editor (`Cmd/Ctrl+F`, or the title search icon)
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is

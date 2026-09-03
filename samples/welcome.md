@@ -61,7 +61,7 @@ Wide table (scroll inside the editor, do not stretch the page):
 | CSS        | `css`   | yes       |                                | —     |
 | Shell      | `bash`  | yes       | also `sh` / `zsh`              | —     |
 | SQL        | `sql`   | yes       |                                | —     |
-| Mermaid    | `mermaid` | no      | fence only — no diagram runtime | v1    |
+| Mermaid    | `mermaid` | diagram   | SVG in live preview; fence stays on disk | v1    |
 
 ## Fences
 
@@ -119,13 +119,23 @@ npm install && npm run compile
 SELECT title FROM notes WHERE path LIKE '%.md';
 ```
 
-Mermaid is included as real-world fence syntax. v1 has no mermaid runtime, so this stays a highlighted (or plain) code block:
+Mermaid fences render as SVG diagrams in live preview. The file still stores the fenced source — copy, save, and round-trip do not rewrite the fence into HTML. Click the diagram (or put the cursor in the fence) to edit the source. Reading mode keeps the diagram.
 
 ```mermaid
 flowchart LR
   md[Raw markdown] --> atomic[Atomic Editor]
   atomic --> preview[Live preview]
   preview --> disk[Same bytes on disk]
+```
+
+A second type (sequence) to exercise more than flowcharts:
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant E as Editor
+  U->>E: edit mermaid source
+  E-->>U: live SVG preview
 ```
 
 ## Images and links
