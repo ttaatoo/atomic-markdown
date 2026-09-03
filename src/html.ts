@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
+import { htmlThemeClass, type PaletteKind } from './themeSetting';
 
-export function renderWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {
+export function renderWebviewHtml(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri,
+  palette: PaletteKind,
+): string {
   const nonce = createNonce();
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
   const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
@@ -18,7 +23,7 @@ export function renderWebviewHtml(webview: vscode.Webview, extensionUri: vscode.
   ].join('; ');
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="${htmlThemeClass(palette)}" data-theme="${palette}">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="${csp}" />

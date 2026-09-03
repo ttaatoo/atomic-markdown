@@ -9,9 +9,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": []
   },
-  "include": ["webview/**/*.ts", "webview/**/*.tsx", "src/protocol.ts"],
+  "include": ["webview/**/*.ts", "webview/**/*.tsx", "src/protocol.ts", "src/themeSetting.ts"],
   "exclude": ["webview/**/*.test.ts"]
 }

@@ -13,7 +13,8 @@ import {
   isApplyingExternal,
   onEditorViewReady,
 } from './sync';
-import { observeWorkbenchTheme } from './theme';
+import { parseThemeSetting, type ThemeSetting } from '../src/themeSetting.ts';
+import { applyThemeSetting, observeTheme } from './theme';
 import { vscodeApi } from './vscodeApi';
 
 interface EditorSession {
@@ -29,8 +30,9 @@ export function App() {
   const generationRef = useRef(0);
   const pendingMarkdownRef = useRef<HostMarkdown | undefined>(undefined);
   const imageOptionsRef = useRef<ImageResolveOptions>({});
+  const themeSettingRef = useRef<ThemeSetting>('followVscode');
 
-  useEffect(() => observeWorkbenchTheme(), []);
+  useEffect(() => observeTheme(() => themeSettingRef.current), []);
 
   useEffect(() => {
     const flushPending = () => {
@@ -69,6 +71,8 @@ export function App() {
           generationRef.current = mount.generation;
           pendingMarkdownRef.current = undefined;
           setReadOnly(message.readOnly);
+          themeSettingRef.current = parseThemeSetting(message.theme);
+          applyThemeSetting(themeSettingRef.current);
           setSession({
             uri: message.uri,
             text: mount.text,
@@ -97,6 +101,10 @@ export function App() {
           break;
         case 'openSearch':
           editorHandleRef.current?.openSearch();
+          break;
+        case 'setTheme':
+          themeSettingRef.current = parseThemeSetting(message.theme);
+          applyThemeSetting(themeSettingRef.current);
           break;
       }
     };

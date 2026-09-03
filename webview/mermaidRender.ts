@@ -94,7 +94,9 @@ function workbenchFontFamily(): string | undefined {
     return undefined;
   }
   const style = getComputedStyle(document.documentElement);
+  const mono = style.getPropertyValue('--atomic-editor-font-mono').trim();
+  const fontMono = style.getPropertyValue('--font-mono').trim();
   const editor = style.getPropertyValue('--vscode-editor-font-family').trim();
   const ui = style.getPropertyValue('--vscode-font-family').trim();
-  return editor || ui || undefined;
+  return mono || fontMono || editor || ui || undefined;
 }

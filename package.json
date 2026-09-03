@@ -36,7 +36,8 @@
     "onCustomEditor:ttaatoo.atomicMarkdown",
     "onCommand:atomicMarkdown.open",
     "onCommand:atomicMarkdown.toggleReadingMode",
-    "onCommand:atomicMarkdown.find"
+    "onCommand:atomicMarkdown.find",
+    "onCommand:atomicMarkdown.toggleLightDark"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -52,6 +53,26 @@
         "priority": "option"
       }
     ],
+    "configuration": {
+      "title": "Atomic Markdown",
+      "properties": {
+        "atomicMarkdown.theme": {
+          "type": "string",
+          "enum": [
+            "followVscode",
+            "dark",
+            "light"
+          ],
+          "enumDescriptions": [
+            "Use Plannotator dark or light to match the workbench kind (not VS Code editor colors).",
+            "Plannotator default dark palette.",
+            "Plannotator default light palette."
+          ],
+          "default": "followVscode",
+          "description": "Writing-surface palette. Always Plannotator's default dark/light oklch tokens. followVscode only chooses which of those two palettes matches the current workbench."
+        }
+      }
+    },
     "commands": [
       {
         "command": "atomicMarkdown.open",
@@ -70,6 +91,12 @@
         "title": "Find",
         "category": "Atomic Markdown",
         "icon": "$(search)"
+      },
+      {
+        "command": "atomicMarkdown.toggleLightDark",
+        "title": "Toggle Light/Dark",
+        "category": "Atomic Markdown",
+        "icon": "$(color-mode)"
       }
     ],
     "menus": {
@@ -84,6 +111,10 @@
         },
         {
           "command": "atomicMarkdown.find",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+        },
+        {
+          "command": "atomicMarkdown.toggleLightDark",
           "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
         }
       ],
@@ -109,6 +140,18 @@
           "command": "atomicMarkdown.find",
           "when": "activeCustomEditorId == ttaatoo.atomicMarkdown",
           "group": "navigation@2"
+        },
+        {
+          "command": "atomicMarkdown.toggleLightDark",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.palette == dark",
+          "group": "navigation@3",
+          "icon": "$(sun)"
+        },
+        {
+          "command": "atomicMarkdown.toggleLightDark",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.palette == light",
+          "group": "navigation@3",
+          "icon": "$(moon)"
         }
       ],
       "editor/title/context": [

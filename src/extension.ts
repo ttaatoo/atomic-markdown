@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import {
   COMMAND_FIND,
   COMMAND_OPEN,
+  COMMAND_TOGGLE_LIGHT_DARK,
   COMMAND_TOGGLE_READING_MODE,
   VIEW_TYPE,
 } from './constants';
@@ -32,6 +33,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand(COMMAND_FIND, () => {
       provider.findInEditor();
+    }),
+    vscode.commands.registerCommand(COMMAND_TOGGLE_LIGHT_DARK, () => {
+      void provider.toggleLightDark();
     }),
   );
 }

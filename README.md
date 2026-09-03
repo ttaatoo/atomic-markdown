@@ -44,9 +44,13 @@ The writing engine is [Atomic Editor](https://www.npmjs.com/package/@atomic-edit
 - Reading mode (editor title book icon, or **Atomic Markdown: Toggle Reading Mode**)
 - Find inside the editor (`Cmd/Ctrl+F`, or the title search icon)
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is
-- Colors follow the current VS Code / Cursor theme (`data-theme` light/dark)
+- Plannotator default dark/light palettes on the writing surface (`atomicMarkdown.theme`, **Atomic Markdown: Toggle Light/Dark**)
 
 http(s) links open externally. Same-workspace `.md` links use `vscode.open` (usually the default text editor).
+
+## Theme
+
+The writing surface uses [Plannotator](https://github.com/backnotprop/plannotator)'s default dark and light oklch palettes, not the workbench editor chrome colors. `atomicMarkdown.theme` is `followVscode` (default), `dark`, or `light`. `followVscode` only picks which of those two palettes matches the current workbench kind. **Atomic Markdown: Toggle Light/Dark** (editor title sun/moon) writes `light` or `dark` to workspace settings when a folder is open, otherwise to user settings. Switching updates `data-theme` and the `theme-plannotator` class without remounting CodeMirror; mermaid diagrams follow the same side.
 
 ## Develop with F5
 

@@ -1,3 +1,5 @@
+import type { ThemeSetting } from './themeSetting';
+
 export type WebviewToHost =
   | { type: 'ready' }
   | { type: 'edit'; text: string; generation: number }
@@ -13,8 +15,10 @@ export type HostToWebview =
       generation: number;
       documentDirWebviewUri?: string;
       workspaceWebviewUri?: string;
+      theme: ThemeSetting;
     }
   | { type: 'setMarkdown'; text: string; generation: number }
   | { type: 'setReadOnly'; readOnly: boolean }
   | { type: 'toggleReadOnly' }
-  | { type: 'openSearch' };
+  | { type: 'openSearch' }
+  | { type: 'setTheme'; theme: ThemeSetting };

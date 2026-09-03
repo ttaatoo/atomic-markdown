@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
-import { CONTEXT_READING_MODE, VIEW_TYPE } from './constants';
+import { CONTEXT_PALETTE, CONTEXT_READING_MODE, SETTING_THEME, VIEW_TYPE } from './constants';
 import type { HostToWebview, WebviewToHost } from './protocol';
 import { renderWebviewHtml } from './html';
+import { currentPaletteKind, readThemeSetting, themeUpdateTarget } from './themeConfig';
+import { nextExplicitTheme } from './themeSetting';
 import {
   isEchoDocumentChange,
   planAfterApplyEdit,
@@ -41,7 +43,18 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
         },
         supportsMultipleEditorsPerDocument: false,
       }),
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration(SETTING_THEME)) {
+          return;
+        }
+        provider.broadcastTheme();
+        provider.updatePaletteContext();
+      }),
+      vscode.window.onDidChangeActiveColorTheme(() => {
+        provider.updatePaletteContext();
+      }),
     );
+    provider.updatePaletteContext();
     return provider;
   }
 
@@ -102,7 +115,27 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       }
     });
 
-    webviewPanel.webview.html = renderWebviewHtml(webviewPanel.webview, this.context.extensionUri);
+    webviewPanel.webview.html = renderWebviewHtml(
+      webviewPanel.webview,
+      this.context.extensionUri,
+      currentPaletteKind(),
+    );
+  }
+
+  async toggleLightDark(): Promise<void> {
+    const next = nextExplicitTheme(currentPaletteKind());
+    await vscode.workspace.getConfiguration('atomicMarkdown').update('theme', next, themeUpdateTarget());
+  }
+
+  broadcastTheme(): void {
+    const theme = readThemeSetting();
+    for (const session of this.sessions.values()) {
+      this.post(session, { type: 'setTheme', theme });
+    }
+  }
+
+  updatePaletteContext(): void {
+    void vscode.commands.executeCommand('setContext', CONTEXT_PALETTE, currentPaletteKind());
   }
 
   toggleReadingMode(): void {
@@ -254,6 +287,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       generation: session.generation,
       documentDirWebviewUri: webviewDirUri(session.panel.webview, documentDirectory(document)),
       workspaceWebviewUri: webviewDirUri(session.panel.webview, workspaceFolder?.uri),
+      theme: readThemeSetting(),
     };
   }
 
@@ -267,6 +301,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
   private setActive(uri: vscode.Uri, session: DocumentSession): void {
     this.activeDocumentUri = uri.toString();
     void vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, session.readOnly);
+    this.updatePaletteContext();
   }
 
   private activeSession(): DocumentSession | undefined {

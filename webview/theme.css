@@ -6,9 +6,9 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
-  font-family: var(--vscode-font-family);
+  background: var(--background, var(--vscode-editor-background));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  font-family: var(--font-sans, var(--vscode-font-family));
 }
 
 .app {
@@ -29,51 +29,123 @@ body,
 }
 
 /*
- * Map Atomic tokens onto workbench colors. Specificity matches Atomic's
- * light-theme block so VS Code tokens win in both data-theme modes.
+ * Plannotator default palettes — tokens copied from
+ * packages/ui/themes/plannotator.css (do not invent other palettes).
+ * Scoped to html.theme-plannotator / .light; writing-surface colors
+ * come from these oklch values, not --vscode-editor-*.
  */
-.atomic-cm-editor,
-[data-theme='light'] .atomic-cm-editor {
-  --atomic-editor-font: var(--vscode-font-family);
-  --atomic-editor-font-mono: var(--vscode-editor-font-family);
-  --atomic-editor-fg: var(--vscode-editor-foreground);
-  --atomic-editor-fg-muted: var(--vscode-descriptionForeground);
-  --atomic-editor-fg-faint: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
-  --atomic-editor-bg: var(--vscode-editor-background);
-  --atomic-editor-bg-panel: var(--vscode-editorWidget-background);
-  --atomic-editor-bg-surface: var(--vscode-sideBar-background, var(--vscode-editorWidget-background));
-  --atomic-editor-border: var(--vscode-editorWidget-border, var(--vscode-panel-border));
-  --atomic-editor-accent: var(--vscode-focusBorder);
-  --atomic-editor-accent-bright: var(--vscode-textLink-activeForeground, var(--vscode-focusBorder));
-  --atomic-editor-accent-soft: var(--vscode-focusBorder);
-  --atomic-editor-link: var(--vscode-textLink-foreground);
-  --atomic-editor-link-hover: var(--vscode-textLink-activeForeground);
-  --atomic-editor-code-bg: var(--vscode-textPreformat-background, var(--vscode-textCodeBlock-background));
-  --atomic-editor-selection-bg: var(--vscode-editor-selectionBackground);
-  --atomic-editor-search-bg: var(--vscode-editor-findMatchHighlightBackground);
-  --atomic-editor-search-bg-active: var(--vscode-editor-findMatchBackground);
-  --atomic-editor-hl-keyword: var(--vscode-symbolIcon-keywordForeground, var(--vscode-debugTokenExpression-name));
-  --atomic-editor-hl-string: var(--vscode-debugTokenExpression-string);
-  --atomic-editor-hl-number: var(--vscode-debugTokenExpression-number);
-  --atomic-editor-hl-comment: var(--vscode-editorLineNumber-foreground);
-  --atomic-editor-hl-type: var(--vscode-symbolIcon-classForeground, var(--vscode-debugTokenExpression-name));
-  --atomic-editor-hl-function: var(--vscode-symbolIcon-functionForeground);
-  --atomic-editor-hl-property: var(--vscode-symbolIcon-propertyForeground, var(--vscode-symbolIcon-variableForeground));
-  --atomic-editor-hl-regexp: var(--vscode-debugTokenExpression-string);
-  --atomic-editor-hl-escape: var(--vscode-debugTokenExpression-value);
-  --atomic-editor-hl-tag: var(--vscode-symbolIcon-colorForeground, var(--vscode-debugTokenExpression-name));
-  --atomic-editor-hl-variable: var(--vscode-symbolIcon-variableForeground, var(--vscode-editor-foreground));
-  --atomic-editor-hl-operator: var(--vscode-symbolIcon-operatorForeground, var(--vscode-editor-foreground));
-  --atomic-editor-hl-invalid: var(--vscode-debugTokenExpression-error);
+html.theme-plannotator {
+  --background: oklch(0.15 0.02 260);
+  --foreground: oklch(0.90 0.01 260);
+  --card: oklch(0.22 0.02 260);
+  --card-foreground: oklch(0.90 0.01 260);
+  --popover: oklch(0.28 0.025 260);
+  --popover-foreground: oklch(0.90 0.01 260);
+  --primary: oklch(0.75 0.18 280);
+  --primary-foreground: oklch(0.15 0.02 260);
+  --secondary: oklch(0.65 0.15 180);
+  --secondary-foreground: oklch(0.15 0.02 260);
+  --muted: oklch(0.26 0.02 260);
+  --muted-foreground: oklch(0.72 0.02 260);
+  --accent: oklch(0.70 0.20 60);
+  --accent-foreground: oklch(0.15 0.02 260);
+  --destructive: oklch(0.65 0.20 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.35 0.02 260);
+  --input: oklch(0.26 0.02 260);
+  --ring: oklch(0.75 0.18 280);
+  --success: oklch(0.72 0.17 150);
+  --success-foreground: oklch(0.15 0.02 260);
+  --warning: oklch(0.75 0.15 85);
+  --warning-foreground: oklch(0.20 0.02 260);
+
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'Geist Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --radius: 0.625rem;
+
+  --code-bg: oklch(0.26 0.02 260);
+  --focus-highlight: oklch(0.70 0.20 200);
+}
+
+html.theme-plannotator.light {
+  --background: oklch(0.97 0.005 260);
+  --foreground: oklch(0.18 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 260);
+  --primary: oklch(0.50 0.25 280);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.50 0.18 180);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.92 0.01 260);
+  --muted-foreground: oklch(0.40 0.02 260);
+  --accent: oklch(0.60 0.22 50);
+  --accent-foreground: oklch(0.18 0.02 260);
+  --destructive: oklch(0.50 0.25 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.88 0.01 260);
+  --input: oklch(0.92 0.01 260);
+  --ring: oklch(0.50 0.25 280);
+  --success: oklch(0.45 0.20 150);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.55 0.18 85);
+  --warning-foreground: oklch(0.18 0.02 260);
+
+  --code-bg: oklch(0.92 0.01 260);
+}
+
+/*
+ * Map Plannotator tokens onto Atomic. Specificity beats Atomic's
+ * [data-theme="light"] .atomic-cm-editor block so those hardcoded
+ * GitHub-light hexes do not leak through.
+ */
+html.theme-plannotator .atomic-cm-editor,
+html.theme-plannotator[data-theme='light'] .atomic-cm-editor,
+html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
+  --atomic-editor-font: var(--font-sans);
+  --atomic-editor-font-mono: var(--font-mono);
+  --atomic-editor-fg: var(--foreground);
+  --atomic-editor-fg-muted: var(--muted-foreground);
+  --atomic-editor-fg-faint: var(--muted-foreground);
+  --atomic-editor-bg: var(--background);
+  --atomic-editor-bg-panel: var(--card);
+  --atomic-editor-bg-surface: var(--popover);
+  --atomic-editor-border: var(--border);
+  --atomic-editor-accent: var(--primary);
+  --atomic-editor-accent-bright: var(--ring);
+  --atomic-editor-accent-soft: var(--secondary);
+  --atomic-editor-link: var(--primary);
+  --atomic-editor-link-hover: var(--accent);
+  --atomic-editor-code-bg: var(--code-bg);
+  --atomic-editor-code-rail: color-mix(in oklch, var(--primary) 45%, var(--border));
+  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 28%, transparent);
+  --atomic-editor-search-bg: color-mix(in oklch, var(--accent) 28%, transparent);
+  --atomic-editor-search-bg-active: color-mix(in oklch, var(--accent) 45%, transparent);
+  --atomic-editor-initial-reveal-bg: color-mix(in oklch, var(--primary) 16%, transparent);
+  --atomic-editor-initial-reveal-bg-strong: color-mix(in oklch, var(--primary) 30%, transparent);
+  --atomic-editor-hl-keyword: var(--primary);
+  --atomic-editor-hl-string: var(--secondary);
+  --atomic-editor-hl-number: var(--accent);
+  --atomic-editor-hl-comment: var(--muted-foreground);
+  --atomic-editor-hl-type: var(--primary);
+  --atomic-editor-hl-function: var(--secondary);
+  --atomic-editor-hl-property: var(--foreground);
+  --atomic-editor-hl-regexp: var(--accent);
+  --atomic-editor-hl-escape: var(--accent);
+  --atomic-editor-hl-tag: var(--primary);
+  --atomic-editor-hl-variable: var(--foreground);
+  --atomic-editor-hl-operator: var(--muted-foreground);
+  --atomic-editor-hl-invalid: var(--destructive);
 }
 
 .cm-atomic-mermaid {
   margin: 0.65em 0;
   padding: 0.75em 0.85em;
   overflow-x: auto;
-  border: 1px solid var(--vscode-widget-border, var(--atomic-editor-border));
-  border-radius: 6px;
-  background: var(--vscode-editor-background, var(--atomic-editor-bg));
+  border: 1px solid var(--atomic-editor-border, var(--vscode-widget-border));
+  border-radius: var(--radius, 6px);
+  background: var(--atomic-editor-bg-panel, var(--vscode-editor-background));
 }
 
 .cm-atomic-mermaid-clickable {
@@ -91,13 +163,13 @@ body,
 }
 
 .cm-atomic-mermaid-pending {
-  color: var(--vscode-descriptionForeground);
+  color: var(--atomic-editor-fg-muted, var(--vscode-descriptionForeground));
   font-size: 0.85em;
 }
 
 .cm-atomic-mermaid-error {
-  color: var(--vscode-errorForeground, #f14c4c);
-  font-family: var(--vscode-editor-font-family, ui-monospace, monospace);
+  color: var(--destructive, var(--vscode-errorForeground, #f14c4c));
+  font-family: var(--atomic-editor-font-mono, var(--vscode-editor-font-family, ui-monospace, monospace));
   font-size: 0.85em;
   white-space: pre-wrap;
 }
