@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-- Editing reliability: per-panel sessions (`supportsMultipleEditorsPerDocument`), serialized host edits, stale generation drop, echo vs external document changes, `applyEdit` failure catch-up.
+- Editing reliability: per-panel sessions (`supportsMultipleEditorsPerDocument`), per-document serialized applies, versioned one-shot echo tickets, abort+catch-up when the document moves before `applyEdit`.
 - Image paste/drop: extension-host `workspace.fs` save under `atomicMarkdown.images.directory` (default `assets`), relative markdown insert via a CM6 transaction.
 - Compact formatting toolbar and scoped Cmd/Ctrl+B, I, K; heading cycle and list toggles.
 - Heading outline panel inside the webview (no `[TOC]` injection).

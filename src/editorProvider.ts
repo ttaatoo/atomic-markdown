@@ -11,10 +11,10 @@ import type { HostToWebview, WebviewToHost } from './protocol';
 import { isFormatAction } from './protocol';
 import { addSession, removeSession } from './sessionMap';
 import {
-  isEchoDocumentChange,
+  consumeVersionedEcho,
   planAfterApplyEdit,
-  planWebviewEdit,
-  shouldAbortApplyBecauseDocumentMoved,
+  planBeforeApply,
+  type VersionedEcho,
 } from './sync';
 import { toLineFeed } from './text';
 import { currentPaletteKind, readAppearance, themeUpdateTarget } from './themeConfig';
@@ -30,14 +30,14 @@ import {
 interface DocumentSession {
   panel: vscode.WebviewPanel;
   generation: number;
-  lastAppliedText: string | undefined;
-  lastPushedToWebview: string | undefined;
+  pendingEcho: VersionedEcho | undefined;
   readOnly: boolean;
   messageQueue: Promise<void>;
 }
 
 export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly sessions = new Map<string, DocumentSession[]>();
+  private readonly documentQueues = new Map<string, Promise<void>>();
   private active: DocumentSession | undefined;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
@@ -82,8 +82,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     const session: DocumentSession = {
       panel: webviewPanel,
       generation: 0,
-      lastAppliedText: undefined,
-      lastPushedToWebview: undefined,
+      pendingEcho: undefined,
       readOnly,
       messageQueue: Promise.resolve(),
     };
@@ -183,12 +182,17 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     session.messageQueue = session.messageQueue.then(work, work);
   }
 
+  private enqueueDocument(uri: string, work: () => Promise<void>): Promise<void> {
+    const next = (this.documentQueues.get(uri) ?? Promise.resolve()).then(work, work);
+    this.documentQueues.set(uri, next);
+    return next;
+  }
+
   private forwardDocumentChange(session: DocumentSession, document: vscode.TextDocument): void {
     const text = document.getText();
-    if (isEchoDocumentChange(text, session.lastAppliedText)) {
-      return;
-    }
-    if (session.lastPushedToWebview !== undefined && isEchoDocumentChange(text, session.lastPushedToWebview)) {
+    const consumed = consumeVersionedEcho(session.pendingEcho, text, document.version);
+    session.pendingEcho = consumed.echo;
+    if (consumed.isEcho) {
       return;
     }
 
@@ -210,7 +214,9 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
         this.post(session, this.initMessage(document, session));
         return;
       case 'edit':
-        await this.applyWebviewEdit(document, session, message.text, message.generation);
+        await this.enqueueDocument(document.uri.toString(), () =>
+          this.applyWebviewEdit(document, session, message.text, message.generation),
+        );
         return;
       case 'openLink':
         await openMarkdownLink(message.href, document);
@@ -318,35 +324,76 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     text: string,
     generation: number,
   ): Promise<void> {
-    const snapshot = document.getText();
-    const plan = planWebviewEdit({
+    const snapshotText = document.getText();
+    const snapshotVersion = document.version;
+    const before = planBeforeApply({
       incomingGeneration: generation,
       sessionGeneration: session.generation,
       incomingText: text,
-      documentText: snapshot,
+      snapshotText,
+      snapshotVersion,
+      currentText: document.getText(),
+      currentVersion: document.version,
       eol: documentEol(document),
     });
 
-    if (plan.type === 'drop-stale') {
+    if (before.type === 'drop-stale') {
       return;
     }
 
-    if (plan.type === 'noop') {
-      session.generation = generation;
+    if (before.type === 'noop') {
+      session.generation = before.sessionGeneration;
       return;
     }
 
-    if (shouldAbortApplyBecauseDocumentMoved(snapshot, document.getText())) {
+    if (before.type === 'abort-concurrent') {
+      session.pendingEcho = undefined;
+      session.generation = Math.max(session.generation, before.sessionGeneration);
+      this.post(session, {
+        type: 'setMarkdown',
+        text: before.pushText,
+        generation: before.pushGeneration,
+      });
+      session.generation = Math.max(session.generation, before.pushGeneration);
       return;
     }
 
-    session.lastAppliedText = plan.nextText;
+    const immediate = planBeforeApply({
+      incomingGeneration: generation,
+      sessionGeneration: session.generation,
+      incomingText: text,
+      snapshotText,
+      snapshotVersion,
+      currentText: document.getText(),
+      currentVersion: document.version,
+      eol: documentEol(document),
+    });
+    if (immediate.type !== 'apply') {
+      if (immediate.type === 'abort-concurrent') {
+        session.pendingEcho = undefined;
+        this.post(session, {
+          type: 'setMarkdown',
+          text: immediate.pushText,
+          generation: immediate.pushGeneration,
+        });
+        session.generation = Math.max(session.generation, immediate.pushGeneration);
+      } else if (immediate.type === 'noop') {
+        session.generation = immediate.sessionGeneration;
+      }
+      return;
+    }
+
     const edit = new vscode.WorkspaceEdit();
     edit.replace(
       document.uri,
       new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)),
-      plan.nextText,
+      immediate.nextText,
     );
+
+    session.pendingEcho = {
+      text: immediate.nextText,
+      version: document.version + 1,
+    };
 
     let applied = false;
     try {
@@ -359,14 +406,14 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       applied,
       incomingGeneration: generation,
       sessionGeneration: session.generation,
-      intendedText: plan.nextText,
+      intendedText: immediate.nextText,
       documentText: document.getText(),
     });
 
     session.generation = Math.max(session.generation, after.sessionGeneration);
 
     if (after.type === 'failed') {
-      session.lastAppliedText = undefined;
+      session.pendingEcho = undefined;
       this.post(session, {
         type: 'setMarkdown',
         text: after.pushText,
@@ -376,11 +423,20 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     }
 
     if (after.catchUp) {
+      session.pendingEcho = undefined;
       this.post(session, {
         type: 'setMarkdown',
         text: after.catchUp.text,
         generation: after.catchUp.generation,
       });
+      return;
+    }
+
+    if (session.pendingEcho && session.pendingEcho.version !== document.version) {
+      session.pendingEcho = {
+        text: immediate.nextText,
+        version: document.version,
+      };
     }
   }
 
@@ -403,9 +459,6 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
   }
 
   private post(session: DocumentSession, message: HostToWebview): void {
-    if (message.type === 'init' || message.type === 'setMarkdown') {
-      session.lastPushedToWebview = message.text;
-    }
     void session.panel.webview.postMessage(message);
   }
 

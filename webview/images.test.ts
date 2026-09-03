@@ -13,9 +13,9 @@ describe('resolveImageSrc', () => {
     workspaceWebviewUri: 'https://webview.example/ws/',
   };
 
-  it('leaves http(s) and data URIs untouched', () => {
+  it('leaves http(s) URIs untouched', () => {
     assert.equal(resolveImageSrc('https://cdn.example/a.png', options), 'https://cdn.example/a.png');
-    assert.equal(resolveImageSrc('data:image/png;base64,xx', options), 'data:image/png;base64,xx');
+    assert.equal(resolveImageSrc('http://cdn.example/a.png', options), 'http://cdn.example/a.png');
   });
 
   it('joins relative paths to the document directory webview URI', () => {
@@ -31,12 +31,14 @@ describe('resolveImageSrc', () => {
     assert.equal(joinWebviewUri('https://webview.example/a/b', 'c.png'), 'https://webview.example/a/b/c.png');
   });
 
-  it('rejects javascript:, file:, and other non-allowlisted schemes', () => {
+  it('rejects javascript:, file:, data:, and other non-allowlisted schemes', () => {
     assert.equal(resolveImageSrc('javascript:alert(1)', options), undefined);
     assert.equal(resolveImageSrc('JAVASCRIPT:alert(1)', options), undefined);
     assert.equal(resolveImageSrc('file:///tmp/secret.png', options), undefined);
+    assert.equal(resolveImageSrc('data:image/png;base64,xx', options), undefined);
     assert.equal(resolveImageSrc('vbscript:msgbox(1)', options), undefined);
     assert.equal(hasRejectedMediaScheme('javascript:alert(1)'), true);
+    assert.equal(hasRejectedMediaScheme('data:image/png;base64,xx'), true);
     assert.equal(hasRejectedMediaScheme('./ok.png'), false);
   });
 
@@ -85,6 +87,15 @@ describe('rewriteImagesIn', () => {
     assert.equal(relative.getAttribute('src'), 'https://webview.example/doc/ok.png');
     assert.equal(calls.includes('throwing'), true);
     void throwing;
+  });
+
+  it('clears data: image src', () => {
+    const dataImg = fakeImg('data:image/png;base64,xx');
+    const root = {
+      querySelectorAll: () => [dataImg],
+    } as unknown as ParentNode;
+    rewriteImagesIn(root, { documentDirWebviewUri: 'https://webview.example/doc/' });
+    assert.equal(dataImg.getAttribute('src'), null);
   });
 });
 

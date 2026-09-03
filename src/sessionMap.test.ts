@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isEchoDocumentChange } from './sync.ts';
+import { consumeVersionedEcho } from './sync.ts';
 import { addSession, removeSession, sessionsForUri, sessionsNeedingForward } from './sessionMap.ts';
 
 describe('sessionMap', () => {
@@ -19,13 +19,22 @@ describe('sessionMap', () => {
 
   it('forwards external edits to the other panel, not the writer', () => {
     const sessions = [
-      { id: 'custom-a', lastAppliedText: 'hello\n' },
-      { id: 'custom-b', lastAppliedText: 'old\n' },
+      { id: 'custom-a', pendingEcho: { text: 'hello\n', version: 2 } },
+      { id: 'custom-b', pendingEcho: undefined },
     ];
-    const need = sessionsNeedingForward(sessions, 'hello\r\n', isEchoDocumentChange);
+    const need = sessionsNeedingForward(sessions, 'hello\r\n', 2, consumeVersionedEcho);
     assert.deepEqual(
       need.map((s) => s.id),
       ['custom-b'],
+    );
+  });
+
+  it('forwards a later revert to A even if an old ticket also said A', () => {
+    const sessions = [{ id: 'custom-a', pendingEcho: { text: 'A', version: 1 } }];
+    const need = sessionsNeedingForward(sessions, 'A', 4, consumeVersionedEcho);
+    assert.deepEqual(
+      need.map((s) => s.id),
+      ['custom-a'],
     );
   });
 

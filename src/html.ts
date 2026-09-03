@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { htmlThemeClass, type PaletteKind } from './themeSetting';
+import { imgSrcCsp } from './webviewCsp';
 
 export function renderWebviewHtml(
   webview: vscode.Webview,
@@ -16,7 +17,7 @@ export function renderWebviewHtml(
   // 'unsafe-inline' for mermaid's SVG <style> blocks.
   const csp = [
     `default-src 'none'`,
-    `img-src ${webview.cspSource} https: http: data:`,
+    imgSrcCsp(webview.cspSource),
     `style-src ${webview.cspSource} 'unsafe-inline'`,
     `font-src ${webview.cspSource}`,
     `script-src 'nonce-${nonce}' ${webview.cspSource}`,

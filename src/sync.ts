@@ -37,6 +37,87 @@ export function isEchoDocumentChange(
   return lastAppliedText !== undefined && sameMarkdown(documentText, lastAppliedText);
 }
 
+/** One-shot echo of a specific document version. Never reuse after a different event. */
+export interface VersionedEcho {
+  text: string;
+  version: number;
+}
+
+export function consumeVersionedEcho(
+  echo: VersionedEcho | undefined,
+  documentText: string,
+  documentVersion: number,
+): { isEcho: boolean; echo: undefined } {
+  if (echo !== undefined && echo.version === documentVersion && sameMarkdown(echo.text, documentText)) {
+    return { isEcho: true, echo: undefined };
+  }
+  return { isEcho: false, echo: undefined };
+}
+
+export type BeforeApplyPlan =
+  | { type: 'drop-stale' }
+  | { type: 'noop'; sessionGeneration: number }
+  | { type: 'abort-concurrent'; sessionGeneration: number; pushText: string; pushGeneration: number }
+  | { type: 'apply'; nextText: string };
+
+/**
+ * Plan a webview write using a snapshot, then refuse to apply if the live
+ * document version/text already moved (check immediately before applyEdit).
+ */
+export function planBeforeApply(input: {
+  incomingGeneration: number;
+  sessionGeneration: number;
+  incomingText: string;
+  snapshotText: string;
+  snapshotVersion: number;
+  currentText: string;
+  currentVersion: number;
+  eol: DocumentEol;
+}): BeforeApplyPlan {
+  const plan = planWebviewEdit({
+    incomingGeneration: input.incomingGeneration,
+    sessionGeneration: input.sessionGeneration,
+    incomingText: input.incomingText,
+    documentText: input.snapshotText,
+    eol: input.eol,
+  });
+
+  if (plan.type === 'drop-stale') {
+    return plan;
+  }
+
+  if (plan.type === 'noop') {
+    return { type: 'noop', sessionGeneration: input.incomingGeneration };
+  }
+
+  if (
+    input.currentVersion !== input.snapshotVersion ||
+    !sameMarkdown(input.snapshotText, input.currentText)
+  ) {
+    return {
+      type: 'abort-concurrent',
+      sessionGeneration: input.sessionGeneration,
+      pushText: toLineFeed(input.currentText),
+      pushGeneration: Math.max(input.sessionGeneration, input.incomingGeneration) + 1,
+    };
+  }
+
+  return { type: 'apply', nextText: plan.nextText };
+}
+
+/** True when applyEdit landed our text but the version skipped — another edit may have been overwritten. */
+export function applyMayHaveOverwrittenConcurrentEdit(input: {
+  snapshotVersion: number;
+  postApplyVersion: number;
+  intendedText: string;
+  postApplyText: string;
+}): boolean {
+  return (
+    input.postApplyVersion > input.snapshotVersion + 1 &&
+    sameMarkdown(input.intendedText, input.postApplyText)
+  );
+}
+
 /** Document moved under us between planning and applyEdit; do not overwrite. */
 export function shouldAbortApplyBecauseDocumentMoved(
   snapshotText: string,

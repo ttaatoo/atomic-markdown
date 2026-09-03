@@ -3,7 +3,7 @@ export interface ImageResolveOptions {
   workspaceWebviewUri?: string;
 }
 
-const ALLOWED_MEDIA_SCHEMES = new Set(['http', 'https', 'data', 'vscode-webview', 'vscode-file']);
+const ALLOWED_MEDIA_SCHEMES = new Set(['http', 'https', 'vscode-webview', 'vscode-file']);
 
 export function mediaScheme(src: string): string | undefined {
   const match = src.trim().match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);

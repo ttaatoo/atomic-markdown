@@ -29,10 +29,15 @@ export function sessionsForUri<T>(map: Map<string, T[]>, uri: string): readonly 
 }
 
 /** Which sessions should receive an external/git/text-editor document change. */
-export function sessionsNeedingForward<T extends { lastAppliedText: string | undefined }>(
+export function sessionsNeedingForward<T extends { pendingEcho: import('./sync').VersionedEcho | undefined }>(
   sessions: readonly T[],
   documentText: string,
-  isEcho: (documentText: string, lastAppliedText: string | undefined) => boolean,
+  documentVersion: number,
+  consumeEcho: (
+    echo: T['pendingEcho'],
+    documentText: string,
+    documentVersion: number,
+  ) => { isEcho: boolean },
 ): T[] {
-  return sessions.filter((session) => !isEcho(documentText, session.lastAppliedText));
+  return sessions.filter((session) => !consumeEcho(session.pendingEcho, documentText, documentVersion).isEcho);
 }

@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  applyMayHaveOverwrittenConcurrentEdit,
+  consumeVersionedEcho,
   isEchoDocumentChange,
   planAfterApplyEdit,
+  planBeforeApply,
   planWebviewEdit,
   shouldAbortApplyBecauseDocumentMoved,
 } from './sync.ts';
@@ -180,5 +183,105 @@ describe('overlapping generations and undo-shaped document changes', () => {
     if (plan.type === 'apply') {
       assert.equal(plan.nextText.length, incomingText.length);
     }
+  });
+});
+
+describe('planBeforeApply concurrent external edits', () => {
+  it('applies when the live document still matches the snapshot version and text', () => {
+    assert.deepEqual(
+      planBeforeApply({
+        incomingGeneration: 4,
+        sessionGeneration: 3,
+        incomingText: 'from webview',
+        snapshotText: 'A',
+        snapshotVersion: 1,
+        currentText: 'A',
+        currentVersion: 1,
+        eol: '\n',
+      }),
+      { type: 'apply', nextText: 'from webview' },
+    );
+  });
+
+  it('does not apply when an external edit moved the document before applyEdit', () => {
+    const plan = planBeforeApply({
+      incomingGeneration: 4,
+      sessionGeneration: 3,
+      incomingText: 'from webview',
+      snapshotText: 'A',
+      snapshotVersion: 1,
+      currentText: 'from git',
+      currentVersion: 2,
+      eol: '\n',
+    });
+    assert.deepEqual(plan, {
+      type: 'abort-concurrent',
+      sessionGeneration: 3,
+      pushText: 'from git',
+      pushGeneration: 5,
+    });
+  });
+
+  it('aborts when the version moved even if the planner snapshot text is reused later', () => {
+    const plan = planBeforeApply({
+      incomingGeneration: 4,
+      sessionGeneration: 3,
+      incomingText: 'B',
+      snapshotText: 'A',
+      snapshotVersion: 1,
+      currentText: 'A',
+      currentVersion: 3,
+      eol: '\n',
+    });
+    assert.equal(plan.type, 'abort-concurrent');
+    if (plan.type === 'abort-concurrent') {
+      assert.equal(plan.pushText, 'A');
+    }
+  });
+
+  it('flags a post-apply version skip that landed our text as a possible overwrite', () => {
+    assert.equal(
+      applyMayHaveOverwrittenConcurrentEdit({
+        snapshotVersion: 1,
+        postApplyVersion: 3,
+        intendedText: 'from webview',
+        postApplyText: 'from webview',
+      }),
+      true,
+    );
+    assert.equal(
+      applyMayHaveOverwrittenConcurrentEdit({
+        snapshotVersion: 1,
+        postApplyVersion: 2,
+        intendedText: 'from webview',
+        postApplyText: 'from webview',
+      }),
+      false,
+    );
+  });
+});
+
+describe('versioned one-shot echo tickets', () => {
+  it('consumes only the exact expected version and then never matches again', () => {
+    const ticket = { text: 'B', version: 2 };
+    const echo = consumeVersionedEcho(ticket, 'B', 2);
+    assert.equal(echo.isEcho, true);
+    assert.equal(echo.echo, undefined);
+    assert.equal(consumeVersionedEcho(echo.echo, 'B', 2).isEcho, false);
+  });
+
+  it('does not ignore a later legitimate A after A→B local then external B→A', () => {
+    const afterLocal = consumeVersionedEcho({ text: 'B', version: 2 }, 'B', 2);
+    assert.equal(afterLocal.isEcho, true);
+    const laterRevert = consumeVersionedEcho(afterLocal.echo, 'A', 3);
+    assert.equal(laterRevert.isEcho, false);
+
+    const staleInitMarker = consumeVersionedEcho({ text: 'A', version: 1 }, 'A', 3);
+    assert.equal(staleInitMarker.isEcho, false);
+  });
+
+  it('does not treat a same-text event at a different version as an echo', () => {
+    assert.equal(consumeVersionedEcho({ text: 'hello\n', version: 4 }, 'hello\r\n', 9).isEcho, false);
+    assert.equal(isEchoDocumentChange('hello\r\n', 'hello\n'), true);
   });
 });

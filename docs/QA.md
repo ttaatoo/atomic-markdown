@@ -8,6 +8,8 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 
 - Stale vs newer webview generations (`planWebviewEdit`); overlapping generations drop the earlier one
 - Echo vs non-echo document changes, including an undo-shaped revert (`isEchoDocumentChange('old', 'new') === false`)
+- Versioned one-shot echo tickets (A→B local then external B→A is not ignored)
+- Pre-`applyEdit` version/text guard aborts and catch-up when the document moved
 - `applyEdit === false` catch-up and concurrent document mismatch
 - Multiple sessions per URI and forwarding to the non-writer (`sessionMap`)
 - LF/CRLF round-trip, including a generated ~1–1.5 MB string (not a committed fixture)

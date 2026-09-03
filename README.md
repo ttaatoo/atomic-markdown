@@ -60,7 +60,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 - Mermaid fenced blocks (`mermaid` info string) render as SVG (bundled; no CDN). Invalid syntax shows an inline error; the fence text on disk is unchanged and stays editable
 - Reading mode (editor title book icon, or **Atomic Markdown: Toggle Reading Mode**)
 - Find inside the editor (`Cmd/Ctrl+F`, or the title search icon)
-- Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is
+- Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is. `data:`, `javascript:`, and `file:` image URIs are rejected.
 - Plannotator default dark/light palettes plus typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) applied live without remounting
 
 http(s) links open externally. Same-workspace `.md` links use `vscode.open` (usually the default text editor).
@@ -75,7 +75,7 @@ In **edit** mode, pasting a clipboard image or dropping an image file:
 
 Untitled documents (or files without a writable directory) show an error and **do not** alter the clipboard. Save the `.md` file first.
 
-SVG is treated as untrusted image data: it is displayed with `<img>`, not executed.
+SVG files on disk are treated as untrusted image data: they are displayed with `<img>`, not executed. Inline `data:` image URIs are rejected (paste/drop saves a file instead).
 
 ## Toolbar and shortcuts
 
@@ -122,8 +122,9 @@ Host-side undo/redo and dirty state live on the VS Code text document. See [docs
 - No wiki `[[links]]`, vault, graph, collaboration, or AI
 - Invalid mermaid is shown as an inline error in the live preview; this environment’s unit tests cover fence parsing and error-message shaping, not `mermaid.render` itself
 - VS Code document undo (as opposed to CodeMirror’s own undo while focused in Atomic) is verified by the echo/non-echo sync helpers plus the F5 checklist, not by a VS Code-host integration test in CI
-- Image paste requires a saved file with a writable directory
+- Image paste requires a saved file with a writable directory. `data:` image URIs are rejected.
 - Outline is headings only; it does not insert `[TOC]`
+- `workspace.applyEdit` has no public version precondition. A foreign in-memory edit that lands *during* the `applyEdit` await can still be overwritten if VS Code accepts the full-document replace; CI tests the pre-apply abort planner, not that host race.
 
 ## License
 
