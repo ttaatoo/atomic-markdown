@@ -3,6 +3,7 @@ import '@atomic-editor/editor/styles.css';
 import { App } from './App';
 import { installMermaidErrorIsolation } from './mermaidIsolation';
 import { WebviewErrorBoundary } from './WebviewErrorBoundary';
+import './fonts.css';
 import './theme.css';
 
 installMermaidErrorIsolation();

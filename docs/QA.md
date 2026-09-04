@@ -22,6 +22,7 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 - Open-with-Atomic replace vs stack planner
 - Toolbar format-active detection; outline heading-at-scroll-position (not leftover caret); find Ctrl/F + Escape routing and package.json when clauses
 - Appearance clamps and CSS variable apply/remove
+- Plannotator token mapping, writing-surface CSS contracts, and Inter/Geist latin font bundling
 
 **Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, listener leaks under the VS Code host, or the full mermaid-scroll renderer path (see below).
 
@@ -76,7 +77,7 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
     With Atomic focused, Cmd/Ctrl+F must open Atomic’s in-editor find (not the workbench Search sidebar). Escape closes that find while it is open and does nothing special when it is closed. Title search icon still calls `atomicMarkdown.find` → `openSearch`.
 
 12. **Theme / typography**  
-    With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash).
+    With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash). Empty `fontFamily` should render Inter / Geist Mono (not the workbench UI font). Glance: ~70ch centered prose, heading size steps, primary quote rail, rounded/muted tables, primary-tinted selection, outline card + current-heading wash, obvious Reading pill.
 
 13. **Outline**  
     Wide window: outline visible with nested headings. After jumping to **Tables**, wheel-scroll until **Fences** is at the top: the outline highlight must move to Fences (scroll-driven, not stuck on the click/caret). Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: styled “No headings”. Toggle from title and toolbar. Setting `atomicMarkdown.outline.enabled` false hides it. Narrow (~640px) layout hides the rail so the editor is not crushed. Document is never given a `[TOC]` block.

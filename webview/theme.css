@@ -32,7 +32,9 @@ body,
  * Plannotator default palettes — tokens copied from
  * packages/ui/themes/plannotator.css (do not invent other palettes).
  * Scoped to html.theme-plannotator / .light; writing-surface colors
- * come from these oklch values, not --vscode-editor-*.
+ * come from these oklch values, not --vscode-editor-*. Visual treatment
+ * (prose measure, heading steps, quote rail, .pn-code-like fences, chrome)
+ * is inspired by Plannotator's open-source theme — this is not Plannotator.
  */
 html.theme-plannotator {
   --background: oklch(0.15 0.02 260);
@@ -103,7 +105,7 @@ html.theme-plannotator.light {
 html.theme-plannotator .atomic-cm-editor,
 html.theme-plannotator[data-theme='light'] .atomic-cm-editor,
 html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
-  --atomic-editor-font: var(--font-sans);
+  --atomic-editor-font: var(--atomic-user-font, var(--font-sans));
   --atomic-editor-font-mono: var(--font-mono);
   --atomic-editor-fg: var(--foreground);
   --atomic-editor-fg-muted: var(--muted-foreground);
@@ -118,12 +120,15 @@ html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
   --atomic-editor-link: var(--primary);
   --atomic-editor-link-hover: var(--accent);
   --atomic-editor-code-bg: var(--code-bg);
-  --atomic-editor-code-rail: color-mix(in oklch, var(--primary) 45%, var(--border));
-  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 28%, transparent);
-  --atomic-editor-search-bg: color-mix(in oklch, var(--accent) 28%, transparent);
-  --atomic-editor-search-bg-active: color-mix(in oklch, var(--accent) 45%, transparent);
+  --atomic-editor-code-rail: color-mix(in oklch, var(--primary) 28%, var(--border));
+  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 22%, transparent);
+  --atomic-editor-search-bg: color-mix(in oklch, var(--primary) 28%, transparent);
+  --atomic-editor-search-bg-active: color-mix(in oklch, var(--primary) 45%, transparent);
   --atomic-editor-initial-reveal-bg: color-mix(in oklch, var(--primary) 16%, transparent);
   --atomic-editor-initial-reveal-bg-strong: color-mix(in oklch, var(--primary) 30%, transparent);
+  --atomic-editor-body-size: var(--atomic-user-size, 17px);
+  --atomic-editor-body-leading: var(--atomic-user-leading, 1.7);
+  --atomic-editor-body-measure: var(--atomic-user-measure, 70ch);
   --atomic-editor-hl-keyword: var(--primary);
   --atomic-editor-hl-string: var(--secondary);
   --atomic-editor-hl-number: var(--accent);
@@ -185,10 +190,6 @@ html {
   --atomic-user-measure: 70ch;
 }
 
-html.theme-plannotator .atomic-cm-editor {
-  --atomic-editor-font: var(--atomic-user-font, var(--font-sans));
-}
-
 .atomic-cm-editor .cm-scroller {
   justify-content: center;
 }
@@ -197,6 +198,175 @@ html.theme-plannotator .atomic-cm-editor {
   max-width: var(--atomic-user-measure, 70ch);
   font-size: var(--atomic-user-size, 17px);
   line-height: var(--atomic-user-leading, 1.7);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-scroller {
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 1.75rem 1.5rem 3rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-content {
+  max-width: var(--atomic-editor-body-measure, var(--atomic-user-measure, 70ch));
+  padding-inline: 1.25rem;
+  font-size: var(--atomic-editor-body-size, var(--atomic-user-size, 17px));
+  line-height: var(--atomic-editor-body-leading, var(--atomic-user-leading, 1.7));
+  font-family: var(--atomic-editor-font, var(--font-sans));
+}
+
+/*
+ * Writing-surface decorations — Plannotator visual treatment on Atomic's
+ * known classes. Prefer CSS over forking Atomic. Fence lines are per-line
+ * decorations (no single .pn-code wrapper); heading padding stays modest
+ * so CM6 click targets are not stolen by a tall blank strip.
+ */
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h1 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.75em;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  padding-top: 0.2em;
+  padding-bottom: 0.16em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h2 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.45em;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  padding-top: 0.2em;
+  padding-bottom: 0.14em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h3 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.25em;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  padding-top: 0.18em;
+  padding-bottom: 0.1em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h4 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.1em;
+  font-weight: 600;
+  line-height: 1.4;
+  padding-top: 0.14em;
+  padding-bottom: 0.08em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h5 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1em;
+  font-weight: 600;
+  padding-top: 0.12em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h6 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 0.875em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding-top: 0.1em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-blockquote {
+  border-left: 2px solid color-mix(in oklab, var(--primary) 50%, transparent);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code {
+  font-family: var(--atomic-editor-font-mono, var(--font-mono));
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: var(--code-bg);
+  box-shadow: none;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border-radius: 0;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code:first-child,
+html.theme-plannotator .atomic-cm-editor .cm-line:not(.cm-atomic-fenced-code) + .cm-line.cm-atomic-fenced-code {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+  padding-top: 0.85rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code:last-child,
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code:has(+ .cm-line:not(.cm-atomic-fenced-code)) {
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  padding-bottom: 0.85rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-inline-code {
+  font-family: var(--atomic-editor-font-mono, var(--font-mono));
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--muted) 72%, var(--code-bg));
+  border-radius: 0.35rem;
+  padding: 0.12em 0.38em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-link {
+  color: var(--primary);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-link:hover {
+  color: var(--accent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table th,
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table td {
+  border-color: var(--border);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table th {
+  background: var(--muted);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox {
+  border-color: color-mix(in oklch, var(--primary) 42%, var(--muted-foreground));
+  border-radius: 0.25rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox:checked::after {
+  border-color: var(--primary-foreground);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-selectionBackground {
+  background: color-mix(in oklch, var(--primary) 22%, transparent) !important;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-content ::selection {
+  background: color-mix(in oklch, var(--primary) 22%, transparent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-searchMatch {
+  background: color-mix(in oklch, var(--primary) 28%, transparent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected {
+  background: color-mix(in oklch, var(--primary) 45%, transparent);
 }
 
 .editor-shell {
@@ -218,28 +388,32 @@ html.theme-plannotator .atomic-cm-editor {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 0.35rem;
-  min-height: 1.9rem;
+  gap: 0.5rem;
+  min-height: 2.1rem;
+  padding: 0.2rem 0.4rem;
   border-bottom: 1px solid var(--border, var(--vscode-widget-border));
-  background: var(--card, var(--vscode-editor-background));
+  background: color-mix(in oklch, var(--card, var(--vscode-editor-background)) 88%, var(--background, transparent));
 }
 
 .atomic-reading-chip {
   flex: 0 0 auto;
-  margin-left: 0.45rem;
-  padding: 0.12rem 0.45rem;
+  margin-left: 0.25rem;
+  padding: 0.22rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid var(--border, var(--vscode-widget-border));
-  background: color-mix(in oklch, var(--primary, #888) 14%, transparent);
-  color: var(--foreground, var(--vscode-editor-foreground));
-  font-size: 0.68rem;
+  border: 1px solid color-mix(in oklch, var(--primary, #888) 38%, var(--border, var(--vscode-widget-border)));
+  background: color-mix(in oklch, var(--primary, #888) 16%, var(--muted, transparent));
+  color: var(--primary, var(--vscode-focusBorder));
+  font-size: 0.7rem;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
 .app-reading .atomic-reading-chip {
   color: var(--primary, var(--vscode-focusBorder));
+  background: color-mix(in oklch, var(--primary, #888) 24%, var(--muted, transparent));
+  border-color: color-mix(in oklch, var(--primary, #888) 50%, var(--border, var(--vscode-widget-border)));
 }
 
 .atomic-toolbar {
@@ -247,8 +421,8 @@ html.theme-plannotator .atomic-cm-editor {
   flex: 1;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.2rem 0.45rem;
+  gap: 0.2rem;
+  padding: 0.15rem 0.35rem;
   background: transparent;
 }
 
@@ -259,17 +433,18 @@ html.theme-plannotator .atomic-cm-editor {
   justify-content: center;
   border: 0;
   background: transparent;
-  color: var(--foreground, var(--vscode-editor-foreground));
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1;
-  min-width: 1.7rem;
-  min-height: 1.7rem;
-  padding: 0.25rem 0.35rem;
-  border-radius: 0.3rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.28rem 0.38rem;
+  border-radius: calc(var(--radius, 0.625rem) * 0.5);
   cursor: pointer;
-  opacity: 0.82;
+  opacity: 0.92;
+  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
 .atomic-toolbar-icon {
@@ -284,6 +459,7 @@ html.theme-plannotator .atomic-cm-editor {
 
 .atomic-toolbar-btn:active:not(:disabled) {
   background: color-mix(in oklch, var(--primary, #888) 22%, transparent);
+  color: var(--primary, var(--vscode-focusBorder));
 }
 
 .atomic-toolbar-btn:disabled {
@@ -299,9 +475,10 @@ html.theme-plannotator .atomic-cm-editor {
 
 .atomic-toolbar-sep {
   width: 1px;
-  height: 1rem;
-  margin: 0 0.2rem;
+  height: 1.05rem;
+  margin: 0 0.28rem;
   background: var(--border, var(--vscode-widget-border));
+  opacity: 0.85;
 }
 
 .outline-panel {
@@ -313,7 +490,7 @@ html.theme-plannotator .atomic-cm-editor {
   border-right: 1px solid var(--border, var(--vscode-widget-border));
   background: var(--card, var(--vscode-editor-background));
   color: var(--card-foreground, var(--vscode-editor-foreground));
-  padding: 0.55rem 0.35rem 0.75rem;
+  padding: 0.7rem 0.5rem 0.95rem;
 }
 
 @container atomic-editor (max-width: 640px) {
@@ -331,10 +508,10 @@ html.theme-plannotator .atomic-cm-editor {
 .outline-panel-title {
   font-size: 0.7rem;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
-  padding: 0.15rem 0.45rem 0.45rem;
+  padding: 0.15rem 0.5rem 0.5rem;
 }
 
 .outline-empty {
@@ -369,12 +546,13 @@ html.theme-plannotator .atomic-cm-editor {
   font: inherit;
   font-size: 0.82rem;
   line-height: 1.35;
-  padding: 0.22rem 0.45rem;
-  border-radius: 0.3rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: calc(var(--radius, 0.625rem) * 0.55);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: background 160ms ease, color 160ms ease;
 }
 
 .outline-item:hover {
@@ -384,6 +562,7 @@ html.theme-plannotator .atomic-cm-editor {
 .outline-item-active {
   color: var(--primary, var(--vscode-focusBorder));
   background: color-mix(in oklch, var(--primary, #888) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--primary, var(--vscode-focusBorder));
   font-weight: 650;
 }
 

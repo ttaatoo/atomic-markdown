@@ -63,7 +63,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 - Reading mode (editor title book/pencil icons plus an in-webview **Reading** chip, or **Atomic Markdown: Toggle Reading Mode**)
 - Find inside the editor (`Cmd/Ctrl+F` while Atomic is active, or the title search icon). **Escape** closes the find bar while it is open and is not swallowed when it is closed
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is. `data:`, `javascript:`, and `file:` image URIs are rejected.
-- Plannotator default dark/light palettes plus typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) applied live without remounting
+- Writing surface and chrome use Plannotator’s default dark/light oklch tokens and prose treatment (Inter / Geist Mono bundled; generous measure; polished headings, quotes, tables, code, tasks). This is not a Plannotator clone — Atomic Editor stays the engine. Typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) apply live without remounting
 
 http(s) links open externally. Same-workspace `.md` links use `vscode.open` (usually the default text editor).
 
@@ -95,12 +95,14 @@ Click a heading to reveal it. In edit mode the caret moves to the heading; in re
 
 ## Theme and typography
 
-The writing surface uses [Plannotator](https://github.com/backnotprop/plannotator)'s default dark and light oklch palettes, not the workbench editor chrome colors.
+The writing surface uses [Plannotator](https://github.com/backnotprop/plannotator)’s default dark and light oklch palettes and a matching prose treatment, not the workbench editor chrome colors. Atomic Markdown is not Plannotator: tokens and visual language are inspired by their open-source theme; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Empty `fontFamily` resolves to bundled **Inter Variable** / **Geist Mono Variable** (latin + latin-ext, system fallbacks). `fontSize` (default 17), `lineHeight` (1.7), and `contentWidth` (70ch) still override measure and size.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
 | `atomicMarkdown.theme` | `followVscode` | `followVscode`, `dark`, or `light`. `followVscode` only picks which of the two Plannotator palettes matches the workbench. |
-| `atomicMarkdown.fontFamily` | `""` | Empty uses the Plannotator stack. |
+| `atomicMarkdown.fontFamily` | `""` | Empty uses bundled Inter / Geist Mono with system fallbacks. |
 | `atomicMarkdown.fontSize` | `17` | Clamped 12–28. |
 | `atomicMarkdown.lineHeight` | `1.7` | Clamped 1.2–2.4. |
 | `atomicMarkdown.contentWidth` | `70` | Column measure in `ch`, clamped 40–120. |
@@ -126,6 +128,7 @@ Host-side undo/redo and dirty state live on the VS Code text document. See [docs
 - VS Code document undo (as opposed to CodeMirror’s own undo while focused in Atomic) is verified by the echo/non-echo sync helpers plus the F5 checklist, not by a VS Code-host integration test in CI
 - Image paste requires a saved file with a writable directory. `data:` image URIs are rejected.
 - Outline is headings only; it does not insert `[TOC]`
+- Visual language is inspired by Plannotator, not pixel-identical: Atomic paints fenced code as per-line decorations (no single rounded `.pn-code` card), and heading spacing must stay modest so CM6 click targets stay honest
 - `workspace.applyEdit` has no public version precondition. A foreign in-memory edit that lands *during* the `applyEdit` await can still be overwritten if VS Code accepts the full-document replace; CI tests the pre-apply abort planner, not that host race.
 
 ## License

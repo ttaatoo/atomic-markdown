@@ -41,6 +41,10 @@ const webviewOptions = {
   logLevel: 'info',
   sourcesContent: false,
   jsx: 'automatic',
+  loader: {
+    '.woff2': 'file',
+  },
+  assetNames: '[name]',
   alias: {
     mermaid: mermaidBundled,
   },

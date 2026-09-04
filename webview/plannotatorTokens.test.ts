@@ -46,6 +46,37 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(mapping, /--atomic-editor-fg: var\(--foreground\);/);
     assert.match(mapping, /--atomic-editor-link: var\(--primary\);/);
     assert.match(mapping, /--atomic-editor-code-bg: var\(--code-bg\);/);
+    assert.match(mapping, /--atomic-editor-body-size: var\(--atomic-user-size, 17px\);/);
+    assert.match(mapping, /--atomic-editor-body-leading: var\(--atomic-user-leading, 1\.7\);/);
+    assert.match(mapping, /--atomic-editor-body-measure: var\(--atomic-user-measure, 70ch\);/);
+    assert.match(mapping, /--atomic-editor-search-bg: color-mix\(in oklch, var\(--primary\) 28%, transparent\);/);
     assert.equal(mapping.includes('--vscode-editor-'), false);
+  });
+
+  it('styles Atomic decorations with Plannotator writing treatment', () => {
+    assert.match(css, /\.cm-line\.cm-atomic-h1 \{/);
+    assert.match(css, /font-size: 1\.75em;/);
+    assert.match(css, /\.cm-line\.cm-atomic-blockquote \{/);
+    assert.match(css, /border-left: 2px solid color-mix\(in oklab, var\(--primary\) 50%, transparent\);/);
+    assert.match(css, /\.cm-line\.cm-atomic-fenced-code \{/);
+    assert.match(css, /font-size: 0\.8125rem;/);
+    assert.match(css, /padding-left: 1rem;/);
+    assert.match(css, /\.cm-atomic-inline-code \{/);
+    assert.match(css, /\.cm-atomic-table \{/);
+    assert.match(css, /border-radius: var\(--radius\);/);
+    assert.match(css, /\.cm-atomic-table th \{/);
+    assert.match(css, /background: var\(--muted\);/);
+    assert.match(css, /\.cm-atomic-task-checkbox:checked \{/);
+    assert.match(css, /background: var\(--primary\);/);
+    assert.match(css, /\.cm-selectionBackground \{/);
+    assert.match(css, /\.cm-searchMatch \{/);
+  });
+
+  it('restyles outline, toolbar, and reading chip in the same language', () => {
+    assert.match(css, /\.outline-panel \{[\s\S]*background: var\(--card/);
+    assert.match(css, /\.outline-item-active \{[\s\S]*box-shadow: inset 2px 0 0 var\(--primary/);
+    assert.match(css, /\.atomic-reading-chip \{[\s\S]*border-radius: 999px;/);
+    assert.match(css, /\.atomic-toolbar-btn \{[\s\S]*transition: background 160ms ease/);
+    assert.match(css, /\.outline-item \{[\s\S]*transition: background 160ms ease/);
   });
 });
