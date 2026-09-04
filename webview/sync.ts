@@ -1,6 +1,6 @@
 import { Transaction } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
-import { findEscapeKeymap } from './findEscapeKeymap';
+import { findEscapeKeymap, findOpenTracker } from './findEscapeKeymap';
 import { applyFormat, insertSnippet, type FormatAction } from './format';
 import { mermaidBlocks } from './mermaidBlocks';
 
@@ -9,11 +9,30 @@ let applyingExternal = false;
 const viewReadyListeners = new Set<(current: EditorView) => void>();
 const documentTextListeners = new Set<(text: string) => void>();
 const viewUpdateListeners = new Set<(current: EditorView) => void>();
+const scrollListeners = new Set<(current: EditorView) => void>();
 
 export const captureEditorView = ViewPlugin.fromClass(
   class {
-    constructor(current: EditorView) {
+    private readonly onScroll: () => void;
+    private raf = 0;
+
+    constructor(readonly current: EditorView) {
       view = current;
+      this.onScroll = () => {
+        if (this.raf) {
+          return;
+        }
+        this.raf = requestAnimationFrame(() => {
+          this.raf = 0;
+          if (view !== this.current) {
+            return;
+          }
+          for (const listener of scrollListeners) {
+            listener(this.current);
+          }
+        });
+      };
+      current.scrollDOM.addEventListener('scroll', this.onScroll, { passive: true });
       for (const listener of viewReadyListeners) {
         listener(current);
       }
@@ -38,7 +57,13 @@ export const captureEditorView = ViewPlugin.fromClass(
     }
 
     destroy(): void {
-      view = null;
+      this.current.scrollDOM.removeEventListener('scroll', this.onScroll);
+      if (this.raf) {
+        cancelAnimationFrame(this.raf);
+      }
+      if (view === this.current) {
+        view = null;
+      }
     }
   },
 );
@@ -70,6 +95,17 @@ export function onEditorViewUpdate(listener: (current: EditorView) => void): () 
   }
   return () => {
     viewUpdateListeners.delete(listener);
+  };
+}
+
+/** Fires on scrollDOM scroll (including moves inside CM6's already-rendered viewport). */
+export function onEditorScroll(listener: (current: EditorView) => void): () => void {
+  scrollListeners.add(listener);
+  if (view) {
+    listener(view);
+  }
+  return () => {
+    scrollListeners.delete(listener);
   };
 }
 
@@ -149,4 +185,4 @@ export function revealOffset(offset: number, moveCaret: boolean): boolean {
   return true;
 }
 
-export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks(), findEscapeKeymap()];
+export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks(), findEscapeKeymap(), findOpenTracker];

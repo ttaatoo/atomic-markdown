@@ -8,7 +8,8 @@ import type { FormatAction, HostToWebview } from '../src/protocol';
 import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { detectFormatActive, formatActiveEqual, type FormatActiveMap } from './formatActive';
-import { isFindChrome, shouldWindowCloseFind } from './findEscape';
+import { isFindOpenShortcut, shouldWindowCloseFind } from './findEscape';
+import { onFindOpenChange } from './findEscapeKeymap';
 import { CODE_LANGUAGES } from './languages';
 import { OutlinePanel } from './OutlinePanel';
 import {
@@ -20,7 +21,7 @@ import {
   parseOutlineHeadings,
   type OutlineNode,
 } from './outline';
-import { activeOutlineHeadingFrom, caretInViewport, outlineNavOffset } from './outlineActive';
+import { headingAtScrollPosition, visibleTopDocPos } from './outlineActive';
 import { fileToBase64, imageFilesFromDataTransfer, inferImageMime, nextImageRequestId } from './pasteImages';
 import {
   applyExternalMarkdown,
@@ -29,6 +30,7 @@ import {
   insertSnippetAtSelection,
   isApplyingExternal,
   onDocumentText,
+  onEditorScroll,
   onEditorViewReady,
   onEditorViewUpdate,
   revealOffset,
@@ -151,6 +153,9 @@ export function App() {
         case 'openSearch':
           editorHandleRef.current?.openSearch();
           break;
+        case 'closeSearch':
+          editorHandleRef.current?.closeSearch();
+          break;
         case 'setTheme':
           themeSettingRef.current = parseThemeSetting(message.theme);
           applyThemeSetting(themeSettingRef.current);
@@ -255,44 +260,45 @@ export function App() {
   }, [session]);
 
   useEffect(() => {
-    return onEditorViewUpdate((current) => {
-      const sel = current.state.selection.main;
-      const text = current.state.doc.toString();
-      const nextActive = detectFormatActive(text, sel.from, sel.to);
-      setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
-      const headings = parseOutlineHeadings(outlineSourceRef.current || text);
-      let viewportFrom = current.viewport.from;
-      try {
-        const rect = current.scrollDOM.getBoundingClientRect();
-        const pos = current.posAtCoords({ x: rect.left + 16, y: rect.top + 8 });
-        if (typeof pos === 'number') {
-          viewportFrom = pos;
-        }
-      } catch {
-        // viewport.from is a fine fallback when coords are unavailable
-      }
-      const pos = outlineNavOffset({
-        viewportFrom,
-        caret: sel.head,
-        caretInView: caretInViewport(sel.head, current.viewport.from, current.viewport.to),
-      });
-      const headingFrom = activeOutlineHeadingFrom(headings, pos);
+    const syncOutline = (current: Parameters<typeof visibleTopDocPos>[0] & { state: { doc: { toString(): string } } }) => {
+      const headings = parseOutlineHeadings(outlineSourceRef.current || current.state.doc.toString());
+      const headingFrom = headingAtScrollPosition(headings, visibleTopDocPos(current));
       setActiveHeadingFrom((prev) => (prev === headingFrom ? prev : headingFrom));
+    };
+    const unsubUpdate = onEditorViewUpdate((current) => {
+      const sel = current.state.selection.main;
+      const nextActive = detectFormatActive(current.state.doc.toString(), sel.from, sel.to);
+      setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
+      syncOutline(current);
     });
+    const unsubScroll = onEditorScroll((current) => {
+      syncOutline(current);
+    });
+    return () => {
+      unsubUpdate();
+      unsubScroll();
+    };
   }, [session]);
 
   useEffect(() => {
+    return onFindOpenChange((open) => {
+      vscodeApi.postMessage({ type: 'findOpenChanged', open });
+    });
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isFindOpenShortcut({ key: event.key, ctrlOrMeta: event.ctrlKey || event.metaKey, alt: event.altKey })) {
+        event.preventDefault();
+        event.stopPropagation();
+        editorHandleRef.current?.openSearch();
+        return;
+      }
       if (event.key !== 'Escape') {
         return;
       }
       const handle = editorHandleRef.current;
-      if (!handle?.isSearchOpen()) {
-        return;
-      }
-      const target = event.target;
-      const inFind = isFindChrome(target instanceof Element ? target : null);
-      if (!shouldWindowCloseFind({ searchOpen: true, inFindChrome: inFind })) {
+      if (!handle || !shouldWindowCloseFind({ searchOpen: handle.isSearchOpen() })) {
         return;
       }
       event.preventDefault();

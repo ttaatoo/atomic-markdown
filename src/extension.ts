@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import {
+  COMMAND_CLOSE_FIND,
   COMMAND_FIND,
   COMMAND_FORMAT,
   COMMAND_OPEN,
@@ -20,6 +21,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand(COMMAND_FIND, () => {
       provider.findInEditor();
+    }),
+    vscode.commands.registerCommand(COMMAND_CLOSE_FIND, () => {
+      provider.closeFind();
     }),
     vscode.commands.registerCommand(COMMAND_TOGGLE_LIGHT_DARK, () => {
       void provider.toggleLightDark();

@@ -20,7 +20,7 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 - Invalid mermaid fence **body remains in the markdown**; `mermaidErrorMessage` shaping
 - Mermaid decoration rebuild gating (occupancy, not every caret move), SVG 100% normalize, height-cache hysteresis
 - Open-with-Atomic replace vs stack planner
-- Toolbar format-active detection; outline current-heading picker; find Escape predicates
+- Toolbar format-active detection; outline heading-at-scroll-position (not leftover caret); find Ctrl/F + Escape routing and package.json when clauses
 - Appearance clamps and CSS variable apply/remove
 
 **Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, listener leaks under the VS Code host, or the full mermaid-scroll renderer path (see below).
@@ -72,14 +72,14 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 11b. **Open with Atomic replaces the tab**  
     Open `welcome.md` in the default text editor. Command Palette / title icon → **Open with Atomic Markdown**. The text tab should become Atomic (same tab slot), not a second same-named tab. Explorer context on a `.md` that is already open as text should also reopen in place. **Reopen Editor With… → Text Editor** still works.
 
-11c. **Find Escape**  
-    Cmd/Ctrl+F opens the find bar. With the find field focused, Escape closes it. Cmd/Ctrl+F still opens it afterward.
+11c. **Find / Escape**  
+    With Atomic focused, Cmd/Ctrl+F must open Atomic’s in-editor find (not the workbench Search sidebar). Escape closes that find while it is open and does nothing special when it is closed. Title search icon still calls `atomicMarkdown.find` → `openSearch`.
 
 12. **Theme / typography**  
     With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash).
 
 13. **Outline**  
-    Wide window: outline visible with nested headings. The heading nearest the viewport/caret highlights while scrolling and editing. Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: styled “No headings”. Toggle from title and toolbar. Setting `atomicMarkdown.outline.enabled` false hides it. Narrow (~640px) layout hides the rail so the editor is not crushed. Document is never given a `[TOC]` block.
+    Wide window: outline visible with nested headings. After jumping to **Tables**, wheel-scroll until **Fences** is at the top: the outline highlight must move to Fences (scroll-driven, not stuck on the click/caret). Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: styled “No headings”. Toggle from title and toolbar. Setting `atomicMarkdown.outline.enabled` false hides it. Narrow (~640px) layout hides the rail so the editor is not crushed. Document is never given a `[TOC]` block.
 
 13b. **Reading mode**  
     Toggle reading mode: title icon switches book ↔ pencil, and the webview shows a **Reading** chip. Format buttons stay disabled. Theme toggle remains visible in `followVscode`.

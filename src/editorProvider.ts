@@ -1,5 +1,13 @@
 import * as vscode from 'vscode';
-import { CONTEXT_OUTLINE, CONTEXT_PALETTE, CONTEXT_READING_MODE, SETTING_ROOT, VIEW_TYPE } from './constants';
+import {
+  CONTEXT_FIND_OPEN,
+  CONTEXT_OUTLINE,
+  CONTEXT_PALETTE,
+  CONTEXT_READING_MODE,
+  SETTING_ROOT,
+  VIEW_TYPE,
+} from './constants';
+import { planCloseFind, planFindInEditor } from './findCommand';
 import { renderWebviewHtml } from './html';
 import {
   decodeBase64Bytes,
@@ -48,6 +56,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       vscode.window.registerCustomEditorProvider(VIEW_TYPE, provider, {
         webviewOptions: {
           retainContextWhenHidden: true,
+          enableFindWidget: false,
         },
         supportsMultipleEditorsPerDocument: true,
       }),
@@ -105,6 +114,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
         this.setActive(session, document.uri);
       } else if (this.active === session) {
         void vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, false);
+        void vscode.commands.executeCommand('setContext', CONTEXT_FIND_OPEN, false);
       }
     });
 
@@ -116,6 +126,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       if (this.active === session) {
         this.active = undefined;
         void vscode.commands.executeCommand('setContext', CONTEXT_READING_MODE, false);
+        void vscode.commands.executeCommand('setContext', CONTEXT_FIND_OPEN, false);
       }
     });
 
@@ -157,10 +168,25 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
 
   findInEditor(): void {
     const session = this.active;
-    if (!session) {
+    const plan = planFindInEditor(Boolean(session));
+    if (!session || !plan.post) {
       return;
     }
+    if (plan.focusWebview) {
+      session.panel.reveal(session.panel.viewColumn, false);
+    }
+    void vscode.commands.executeCommand('setContext', CONTEXT_FIND_OPEN, true);
     this.post(session, { type: 'openSearch' });
+  }
+
+  closeFind(): void {
+    const session = this.active;
+    const plan = planCloseFind(Boolean(session));
+    if (!session || !plan.post) {
+      return;
+    }
+    this.post(session, { type: 'closeSearch' });
+    void vscode.commands.executeCommand('setContext', CONTEXT_FIND_OPEN, false);
   }
 
   format(action: unknown): void {
@@ -233,6 +259,11 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
         return;
       case 'saveImage':
         await this.saveImage(document, session, message);
+        return;
+      case 'findOpenChanged':
+        if (this.active === session) {
+          await vscode.commands.executeCommand('setContext', CONTEXT_FIND_OPEN, message.open);
+        }
         return;
     }
   }

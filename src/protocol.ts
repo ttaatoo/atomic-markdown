@@ -33,7 +33,8 @@ export type WebviewToHost =
   | { type: 'edit'; text: string; generation: number }
   | { type: 'openLink'; href: string }
   | { type: 'readOnlyChanged'; readOnly: boolean }
-  | { type: 'saveImage'; requestId: string; mime: string; basename?: string; base64: string };
+  | { type: 'saveImage'; requestId: string; mime: string; basename?: string; base64: string }
+  | { type: 'findOpenChanged'; open: boolean };
 
 export type HostToWebview =
   | {
@@ -51,6 +52,7 @@ export type HostToWebview =
   | { type: 'setReadOnly'; readOnly: boolean }
   | { type: 'toggleReadOnly' }
   | { type: 'openSearch' }
+  | { type: 'closeSearch' }
   | { type: 'setTheme'; theme: ThemeSetting }
   | { type: 'setAppearance'; appearance: AppearanceSettings }
   | { type: 'format'; action: FormatAction }

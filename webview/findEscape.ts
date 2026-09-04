@@ -1,7 +1,6 @@
 /**
- * Atomic's find UI is a CM6 search panel (`closeSearch` on the editor handle).
- * Escape must close it when the panel is focused. Ctrl/Cmd+F stays on
- * `atomicMarkdown.find` / `openSearch`.
+ * Atomic find is CM6's search panel (`openSearch` / `closeSearch` on the handle).
+ * Workbench Ctrl/Cmd+F must not win; Escape must close only while find is open.
  */
 
 export function isFindChrome(target: { closest?: (selector: string) => unknown } | null): boolean {
@@ -10,12 +9,20 @@ export function isFindChrome(target: { closest?: (selector: string) => unknown }
   );
 }
 
-/** Window capture: steal Escape only while the find field/panel is focused. */
-export function shouldWindowCloseFind(input: { searchOpen: boolean; inFindChrome: boolean }): boolean {
-  return input.searchOpen && input.inFindChrome;
+/** Window capture: close find whenever it is open (focus may be in the input or the editor). */
+export function shouldWindowCloseFind(input: { searchOpen: boolean }): boolean {
+  return input.searchOpen;
 }
 
-/** CM6 keymap (Prec.high): Escape closes an open search panel. */
+/** CM6 keymap (Prec.high): Escape closes an open search panel; otherwise do not consume. */
 export function shouldKeymapCloseFind(searchOpen: boolean): boolean {
   return searchOpen;
+}
+
+export function isFindOpenShortcut(input: { key: string; ctrlOrMeta: boolean; alt: boolean }): boolean {
+  return input.ctrlOrMeta && !input.alt && input.key.toLowerCase() === 'f';
+}
+
+export function shouldHostEscapeCloseFind(findOpen: boolean): boolean {
+  return findOpen;
 }

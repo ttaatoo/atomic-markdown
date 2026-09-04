@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-- UX polish: mermaid scroll no longer blanks the webview; Open with Atomic replaces the current tab; SVG toolbar with pressed states; live outline highlight; find closes on Escape; reading-mode chip.
+- UX polish: mermaid scroll no longer blanks the webview; Open with Atomic replaces the current tab; SVG toolbar with pressed states; outline highlight follows the visible heading while scrolling; Ctrl/Cmd+F opens Atomic find (not the sidebar); Escape closes find only while it is open; reading-mode chip.
 - Editing reliability: per-panel sessions (`supportsMultipleEditorsPerDocument`), per-document serialized applies, versioned one-shot echo tickets, abort+catch-up when the document moves before `applyEdit`.
 - Image paste/drop: extension-host `workspace.fs` save under `atomicMarkdown.images.directory` (default `assets`), relative markdown insert via a CM6 transaction.
 - Compact formatting toolbar and scoped Cmd/Ctrl+B, I, K; heading cycle and list toggles.

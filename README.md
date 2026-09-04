@@ -61,7 +61,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 - Fence highlighting for ~20 languages
 - Mermaid fenced blocks (`mermaid` info string) render as SVG (bundled; no CDN). Invalid syntax shows an inline error; the fence text on disk is unchanged and stays editable. Scrolling through diagrams must not blank the webview (see [docs/QA.md](docs/QA.md))
 - Reading mode (editor title book/pencil icons plus an in-webview **Reading** chip, or **Atomic Markdown: Toggle Reading Mode**)
-- Find inside the editor (`Cmd/Ctrl+F`, or the title search icon). **Escape** closes the find bar when it is focused
+- Find inside the editor (`Cmd/Ctrl+F` while Atomic is active, or the title search icon). **Escape** closes the find bar while it is open and is not swallowed when it is closed
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is. `data:`, `javascript:`, and `file:` image URIs are rejected.
 - Plannotator default dark/light palettes plus typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) applied live without remounting
 
@@ -91,7 +91,7 @@ These shortcuts are scoped with `when: activeCustomEditorId == ttaatoo.atomicMar
 
 `atomicMarkdown.outline.enabled` (default `true`) allows a collapsible heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Toggle it from the editor title or the toolbar.
 
-Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The current (or nearest above the viewport) heading stays highlighted while you scroll or edit. The outline updates as you type (debounced on large documents). It never mutates the file. A note with no headings shows a styled empty state. Below ~640px the rail hides so it cannot crush the editor.
+Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The highlight follows the heading at the **visible viewport top** as you scroll (a leftover caret after an outline click does not pin it). The outline updates as you type (debounced on large documents). It never mutates the file. A note with no headings shows a styled empty state. Below ~640px the rail hides so it cannot crush the editor.
 
 ## Theme and typography
 

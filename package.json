@@ -41,6 +41,7 @@
     "onCommand:atomicMarkdown.open",
     "onCommand:atomicMarkdown.toggleReadingMode",
     "onCommand:atomicMarkdown.find",
+    "onCommand:atomicMarkdown.closeFind",
     "onCommand:atomicMarkdown.toggleLightDark",
     "onCommand:atomicMarkdown.format",
     "onCommand:atomicMarkdown.toggleOutline"
@@ -140,6 +141,11 @@
         "icon": "$(search)"
       },
       {
+        "command": "atomicMarkdown.closeFind",
+        "title": "Close Find",
+        "category": "Atomic Markdown"
+      },
+      {
         "command": "atomicMarkdown.toggleLightDark",
         "title": "Toggle Light/Dark",
         "category": "Atomic Markdown",
@@ -170,6 +176,10 @@
         {
           "command": "atomicMarkdown.find",
           "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+        },
+        {
+          "command": "atomicMarkdown.closeFind",
+          "when": "false"
         },
         {
           "command": "atomicMarkdown.toggleLightDark",
@@ -247,7 +257,24 @@
         "command": "atomicMarkdown.find",
         "key": "ctrl+f",
         "mac": "cmd+f",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !editorTextFocus"
+      },
+      {
+        "command": "atomicMarkdown.find",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && webviewFocus"
+      },
+      {
+        "command": "atomicMarkdown.find",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
         "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+      },
+      {
+        "command": "atomicMarkdown.closeFind",
+        "key": "escape",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.findOpen"
       },
       {
         "command": "atomicMarkdown.format",
