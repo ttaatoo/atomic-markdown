@@ -104,11 +104,6 @@
           "maximum": 120,
           "description": "Maximum measure of the writing column in `ch` (40–120, default 70)."
         },
-        "atomicMarkdown.toolbar.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Always show the formatting toolbar. Off (default) keeps a single Format control; shortcuts still work."
-        },
         "atomicMarkdown.outline.enabled": {
           "type": "boolean",
           "default": true,

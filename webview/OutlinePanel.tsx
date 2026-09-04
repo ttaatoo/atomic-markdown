@@ -1,4 +1,5 @@
 import type { OutlineNode } from './outline';
+import { outlineToggleTitle } from './toolbarLabels';
 
 export function OutlinePanel(props: {
   nodes: OutlineNode[];
@@ -16,8 +17,8 @@ export function OutlinePanel(props: {
         <button
           type="button"
           className="outline-icon-btn"
-          aria-label="Show outline"
-          title="Show outline"
+          aria-label={outlineToggleTitle(false)}
+          title={outlineToggleTitle(false)}
           onClick={props.onToggleSidebar}
         >
           <OutlineGlyph />
@@ -36,8 +37,8 @@ export function OutlinePanel(props: {
         <button
           type="button"
           className="outline-icon-btn outline-icon-btn-inline"
-          aria-label="Hide outline"
-          title="Hide outline"
+          aria-label={outlineToggleTitle(true)}
+          title={outlineToggleTitle(true)}
           onClick={props.onToggleSidebar}
         >
           <CollapseGlyph />

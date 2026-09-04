@@ -29,6 +29,12 @@ body,
   height: 100%;
 }
 
+.atomic-cm-editor .cm-scroller,
+.outline-panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, var(--vscode-widget-border)) transparent;
+}
+
 /*
  * Plannotator default palettes — tokens copied from
  * packages/ui/themes/plannotator.css (do not invent other palettes).
@@ -65,6 +71,10 @@ html.theme-plannotator {
   --font-sans: var(--vscode-font-family), system-ui, sans-serif;
   --font-mono: var(--vscode-editor-font-family), ui-monospace, monospace;
   --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 
   --code-bg: oklch(0.26 0.02 260);
   --focus-highlight: oklch(0.70 0.20 200);
@@ -121,8 +131,9 @@ html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
   --atomic-editor-link: var(--primary);
   --atomic-editor-link-hover: var(--accent);
   --atomic-editor-code-bg: var(--code-bg);
+  --atomic-editor-radius: var(--radius);
   --atomic-editor-code-rail: color-mix(in oklch, var(--primary) 28%, var(--border));
-  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 22%, transparent);
+  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 26%, transparent);
   --atomic-editor-search-bg: color-mix(in oklch, var(--primary) 28%, transparent);
   --atomic-editor-search-bg-active: color-mix(in oklch, var(--primary) 45%, transparent);
   --atomic-editor-initial-reveal-bg: color-mix(in oklch, var(--primary) 16%, transparent);
@@ -153,7 +164,7 @@ html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
   overflow-y: hidden;
   contain: layout;
   border: 1px solid var(--atomic-editor-border, var(--vscode-widget-border));
-  border-radius: var(--radius, 6px);
+  border-radius: var(--atomic-editor-radius, var(--radius));
   background: var(--atomic-editor-bg-panel, var(--vscode-editor-background));
 }
 
@@ -277,9 +288,9 @@ html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h6 {
 }
 
 html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-blockquote {
-  border-left: 0;
+  border-left: 2px solid color-mix(in oklch, var(--primary) 50%, transparent);
   padding-left: 0.85em;
-  background: color-mix(in oklch, var(--muted) 62%, transparent);
+  background: color-mix(in oklch, var(--muted) 28%, transparent);
   color: var(--muted-foreground);
   font-style: italic;
 }
@@ -355,11 +366,19 @@ html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox:checked::after
 }
 
 html.theme-plannotator .atomic-cm-editor .cm-selectionBackground {
-  background: color-mix(in oklch, var(--primary) 14%, transparent) !important;
+  background: color-mix(in oklch, var(--primary) 26%, transparent) !important;
 }
 
 html.theme-plannotator .atomic-cm-editor .cm-content ::selection {
-  background: color-mix(in oklch, var(--primary) 14%, transparent);
+  background: color-mix(in oklch, var(--primary) 26%, transparent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-hr {
+  margin-block: 0.7em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-hr::after {
+  border-top: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
 }
 
 html.theme-plannotator .atomic-cm-editor .cm-searchMatch {
@@ -424,7 +443,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   font-size: inherit;
   cursor: pointer;
   padding: 0.1rem 0.2rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 3px);
 }
 
 .atomic-notice-dismiss:hover,
@@ -432,54 +451,23 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   color: var(--foreground, var(--vscode-editor-foreground));
 }
 
-.atomic-chrome {
+.selection-format-bar {
+  position: fixed;
+  z-index: 6;
   display: flex;
-  flex-shrink: 0;
   align-items: center;
   gap: 2px;
-  min-height: 22px;
-  padding: 0 4px;
-  border-bottom: 1px solid var(--border, var(--vscode-widget-border));
-  background: color-mix(in oklch, var(--card, var(--vscode-editor-background)) 70%, var(--background, transparent));
+  padding: 3px;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: var(--radius-md, var(--radius));
+  background: var(--popover, var(--card, var(--vscode-editor-background)));
+  color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
+  box-shadow: 0 4px 16px color-mix(in oklch, var(--foreground, #000) 12%, transparent);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size, 13px);
 }
 
-.atomic-chrome-quiet {
-  min-height: 22px;
-  background: var(--background, var(--vscode-editor-background));
-}
-
-.atomic-reading-chip {
-  flex: 0 0 auto;
-  margin-left: 2px;
-  padding: 1px 7px;
-  border-radius: 2px;
-  border: 1px solid var(--border, var(--vscode-widget-border));
-  background: var(--muted, transparent);
-  color: var(--muted-foreground, var(--vscode-descriptionForeground));
-  font-size: inherit;
-  font-weight: 600;
-  letter-spacing: 0;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
-}
-
-.app-reading .atomic-reading-chip {
-  color: var(--foreground, var(--vscode-editor-foreground));
-  background: color-mix(in oklch, var(--primary, #888) 10%, var(--muted, transparent));
-}
-
-.atomic-toolbar {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px;
-  padding: 0 2px;
-  background: transparent;
-}
-
-.atomic-toolbar-btn {
+.selection-format-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -488,57 +476,26 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   background: transparent;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
   font: inherit;
-  font-size: inherit;
-  font-weight: 400;
   line-height: 1;
   min-width: 22px;
   min-height: 22px;
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 2px;
+  border-radius: var(--radius-sm, 3px);
   cursor: pointer;
-  opacity: 0.92;
-  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
-.atomic-format-toggle {
-  min-width: 22px;
-  padding-inline: 6px;
-  font-size: inherit;
-  font-weight: 400;
-}
-
-.atomic-toolbar-icon {
+.selection-format-icon {
   display: block;
 }
 
-.atomic-toolbar-btn:hover:not(:disabled) {
-  background: var(--muted, var(--vscode-toolbar-hoverBackground));
+.selection-format-btn:hover {
+  background: var(--muted, var(--vscode-list-hoverBackground));
   color: var(--foreground, var(--vscode-editor-foreground));
-  opacity: 1;
 }
 
-.atomic-toolbar-btn:active:not(:disabled) {
-  background: color-mix(in oklch, var(--primary, #888) 22%, transparent);
-  color: var(--primary, var(--vscode-focusBorder));
-}
-
-.atomic-toolbar-btn:disabled {
-  opacity: 0.38;
-  cursor: default;
-}
-
-.atomic-toolbar-btn[aria-pressed='true'] {
+.selection-format-btn[aria-pressed='true'] {
   color: var(--primary, var(--vscode-focusBorder));
   background: color-mix(in oklch, var(--primary, #888) 18%, transparent);
-  opacity: 1;
-}
-
-.atomic-toolbar-sep {
-  width: 1px;
-  height: 14px;
-  margin: 0 4px;
-  background: var(--border, var(--vscode-widget-border));
-  opacity: 0.85;
 }
 
 /*
@@ -628,7 +585,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   height: 22px;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 3px);
   background: transparent;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
   cursor: pointer;
@@ -655,7 +612,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
   background: var(--muted, color-mix(in oklch, var(--card, #222) 88%, transparent));
   border: 1px dashed var(--border, var(--vscode-widget-border));
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 3px);
 }
 
 .outline-list {
@@ -682,7 +639,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   height: 16px;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 3px);
   background: none;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
 }
@@ -730,7 +687,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   font-size: inherit;
   line-height: 1.35;
   padding: 2px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -755,22 +712,32 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 .outline-level-5 { padding-left: 32px; }
 .outline-level-6 { padding-left: 40px; }
 
-.atomic-toolbar-btn:focus-visible,
-.atomic-format-toggle:focus-visible,
 .atomic-notice-dismiss:focus-visible,
 .outline-item:focus-visible,
 .outline-twisty:focus-visible,
 .outline-icon-btn:focus-visible,
-.outline-backdrop:focus-visible {
-  outline: 1px solid var(--ring, var(--vscode-focusBorder));
-  outline-offset: -1px;
+.outline-backdrop:focus-visible,
+.selection-format-btn:focus-visible {
+  outline: 2px solid var(--ring, var(--vscode-focusBorder));
+  outline-offset: 2px;
+}
+
+html.transitions-ready .outline-item,
+html.transitions-ready .outline-icon-btn,
+html.transitions-ready .outline-twisty,
+html.transitions-ready .atomic-notice,
+html.transitions-ready .selection-format-btn,
+html.transitions-ready .atomic-notice-dismiss {
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .atomic-toolbar-btn,
-  .atomic-reading-chip,
-  .outline-item,
-  .atomic-notice {
+  html.transitions-ready .outline-item,
+  html.transitions-ready .outline-icon-btn,
+  html.transitions-ready .outline-twisty,
+  html.transitions-ready .atomic-notice,
+  html.transitions-ready .selection-format-btn,
+  html.transitions-ready .atomic-notice-dismiss {
     transition: none;
   }
 }

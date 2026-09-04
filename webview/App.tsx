@@ -25,11 +25,18 @@ import {
   type OutlineNode,
 } from './outline';
 import { hostFailureNotice } from './notices';
-import { formatStripTitle } from './toolbarLabels';
 import { headingAtScrollPosition, visibleTopDocPos } from './outlineActive';
 import { fileToBase64, imageFilesFromDataTransfer, inferImageMime, nextImageRequestId } from './pasteImages';
+import { SelectionFormatBar } from './SelectionFormatBar';
+import {
+  SELECTION_BAR_FALLBACK_HEIGHT,
+  SELECTION_BAR_FALLBACK_WIDTH,
+  selectionBarFromCoords,
+  type SelectionBarBox,
+} from './selectionBar';
 import {
   applyExternalMarkdown,
+  currentEditorView,
   dispatchFormat,
   EXTRA_EXTENSIONS,
   insertSnippetAtSelection,
@@ -40,7 +47,6 @@ import {
   onEditorViewUpdate,
   revealOffset,
 } from './sync';
-import { Toolbar } from './Toolbar';
 import { applyAppearance, applyThemeSetting, observeTheme } from './theme';
 import { parseThemeSetting, type ThemeSetting } from '../src/themeSetting.ts';
 import { vscodeApi } from './vscodeApi';
@@ -55,8 +61,6 @@ export function App() {
   const editorHandleRef = useRef<AtomicCodeMirrorEditorHandle | null>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const [readOnly, setReadOnly] = useState(false);
-  const [toolbarEnabled, setToolbarEnabled] = useState(false);
-  const [formatStripOpen, setFormatStripOpen] = useState(false);
   const [outlineEnabled, setOutlineEnabled] = useState(true);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [notice, setNotice] = useState<string | undefined>();
@@ -64,6 +68,7 @@ export function App() {
   const [collapsedFroms, setCollapsedFroms] = useState<Set<number>>(() => new Set());
   const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
   const [formatActive, setFormatActive] = useState<FormatActiveMap>({});
+  const [selectionBar, setSelectionBar] = useState<SelectionBarBox | null>(null);
   const generationRef = useRef(0);
   const pendingMarkdownRef = useRef<HostMarkdown | undefined>(undefined);
   const imageOptionsRef = useRef<ImageResolveOptions>({});
@@ -76,11 +81,20 @@ export function App() {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const shellWidthRef = useRef(0);
   const [shellWidth, setShellWidth] = useState(0);
+  const pointerOnBarRef = useRef(false);
+  const selectionBarElRef = useRef<HTMLDivElement | null>(null);
 
   readOnlyRef.current = readOnly;
   outlineOpenRef.current = outlineOpen;
 
   useEffect(() => observeTheme(() => themeSettingRef.current), []);
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      document.documentElement.classList.add('transitions-ready');
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     const flushPending = () => {
@@ -103,7 +117,6 @@ export function App() {
       themeSettingRef.current = parseThemeSetting(appearance.theme);
       applyAppearance(appearance);
       outlineEnabledRef.current = appearance.outlineEnabled;
-      setToolbarEnabled(appearance.toolbarEnabled);
       setOutlineEnabled(appearance.outlineEnabled);
       setOutlineOpen((open) => (appearance.outlineEnabled ? open : false));
     };
@@ -215,6 +228,12 @@ export function App() {
   }, [readOnly, session]);
 
   useEffect(() => {
+    if (readOnly) {
+      setSelectionBar(null);
+    }
+  }, [readOnly]);
+
+  useEffect(() => {
     const root = document.getElementById('root');
     if (!root) {
       return;
@@ -285,18 +304,69 @@ export function App() {
       const headingFrom = headingAtScrollPosition(headings, visibleTopDocPos(current));
       setActiveHeadingFrom((prev) => (prev === headingFrom ? prev : headingFrom));
     };
-    const unsubUpdate = onEditorViewUpdate((current) => {
+    const syncSelectionBar = (current: Parameters<typeof visibleTopDocPos>[0] & {
+      hasFocus: boolean;
+      coordsAtPos(pos: number): { top: number; bottom: number; left: number; right: number } | null;
+      state: { selection: { main: { from: number; to: number; empty: boolean } }; doc: { toString(): string } };
+    }) => {
       const sel = current.state.selection.main;
       const nextActive = detectFormatActive(current.state.doc.toString(), sel.from, sel.to);
       setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
+      const barEl = selectionBarElRef.current;
+      const next = selectionBarFromCoords(
+        {
+          readOnly: readOnlyRef.current,
+          selectionEmpty: sel.empty,
+          editorFocused: current.hasFocus,
+          pointerOnBar: pointerOnBarRef.current,
+        },
+        current.coordsAtPos(sel.from),
+        current.coordsAtPos(sel.to),
+        { width: window.innerWidth, height: window.innerHeight },
+        {
+          width: barEl?.offsetWidth || SELECTION_BAR_FALLBACK_WIDTH,
+          height: barEl?.offsetHeight || SELECTION_BAR_FALLBACK_HEIGHT,
+        },
+      );
+      setSelectionBar((prev) => {
+        if (!next && !prev) {
+          return prev;
+        }
+        if (next && prev && Math.abs(next.top - prev.top) < 0.5 && Math.abs(next.left - prev.left) < 0.5) {
+          return prev;
+        }
+        return next;
+      });
+    };
+    const unsubUpdate = onEditorViewUpdate((current) => {
       syncOutline(current);
+      syncSelectionBar(current);
     });
     const unsubScroll = onEditorScroll((current) => {
       syncOutline(current);
+      syncSelectionBar(current);
     });
+    const onResize = () => {
+      const current = currentEditorView();
+      if (current) {
+        syncSelectionBar(current);
+      }
+    };
+    const onFocusChange = () => {
+      const current = currentEditorView();
+      if (current) {
+        syncSelectionBar(current);
+      }
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('focusin', onFocusChange);
+    window.addEventListener('focusout', onFocusChange);
     return () => {
       unsubUpdate();
       unsubScroll();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('focusin', onFocusChange);
+      window.removeEventListener('focusout', onFocusChange);
     };
   }, [session]);
 
@@ -458,9 +528,6 @@ export function App() {
   const showOutline = placement.show;
   const outlineOverlay = placement.mount === 'overlay';
   const outlineCollapsed = placement.show && !placement.expanded;
-  const showFormats = !readOnly && (toolbarEnabled || formatStripOpen);
-  const showChrome = readOnly || outlineEnabled || !readOnly;
-  const chromeQuiet = !readOnly && !toolbarEnabled && !formatStripOpen;
 
   return (
     <div className={`app${readOnly ? ' app-reading' : ''}`}>
@@ -470,38 +537,6 @@ export function App() {
           <button type="button" className="atomic-notice-dismiss" onClick={() => setNotice(undefined)}>
             Dismiss
           </button>
-        </div>
-      ) : null}
-      {showChrome ? (
-        <div className={`atomic-chrome${chromeQuiet ? ' atomic-chrome-quiet' : ''}`}>
-          {readOnly ? (
-            <div className="atomic-reading-chip" role="status">
-              Reading
-            </div>
-          ) : null}
-          {!readOnly && !toolbarEnabled ? (
-            <button
-              type="button"
-              className="atomic-toolbar-btn atomic-format-toggle"
-              aria-expanded={formatStripOpen}
-              aria-label={formatStripTitle(formatStripOpen)}
-              title={formatStripTitle(formatStripOpen)}
-              onClick={() => setFormatStripOpen((open) => !open)}
-            >
-              Format
-            </button>
-          ) : null}
-          {outlineEnabled || showFormats ? (
-            <Toolbar
-              readOnly={readOnly}
-              showFormats={showFormats}
-              outlineOpen={placement.expanded}
-              outlineEnabled={outlineEnabled}
-              formatActive={formatActive}
-              onFormat={onFormat}
-              onToggleOutline={onToggleOutline}
-            />
-          ) : null}
         </div>
       ) : null}
       <div className={`editor-frame${outlineOverlay ? ' outline-overlay' : ''}`} ref={shellRef}>
@@ -548,6 +583,21 @@ export function App() {
           />
         ) : null}
       </div>
+      {selectionBar && !readOnly ? (
+        <SelectionFormatBar
+          top={selectionBar.top}
+          left={selectionBar.left}
+          barRef={selectionBarElRef}
+          formatActive={formatActive}
+          onFormat={onFormat}
+          onPointerEnter={() => {
+            pointerOnBarRef.current = true;
+          }}
+          onPointerLeave={() => {
+            pointerOnBarRef.current = false;
+          }}
+        />
+      ) : null}
     </div>
   );
 }

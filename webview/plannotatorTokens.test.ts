@@ -117,6 +117,8 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(mapping, /--atomic-editor-font: var\(--atomic-user-font, var\(--vscode-font-family\)\);/);
     assert.match(mapping, /--atomic-editor-body-leading: var\(--atomic-user-leading, 1\.7\);/);
     assert.match(mapping, /--atomic-editor-body-measure: var\(--atomic-user-measure, 70ch\);/);
+    assert.match(mapping, /--atomic-editor-radius: var\(--radius\);/);
+    assert.match(mapping, /--atomic-editor-selection-bg: color-mix\(in oklch, var\(--primary\) 26%, transparent\);/);
     assert.equal(mapping.includes('--vscode-editor-background'), false);
     assert.equal(mapping.includes('--vscode-editor-foreground'), false);
   });
@@ -125,7 +127,8 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(css, /\.cm-line\.cm-atomic-h1 \{/);
     assert.match(css, /font-size: 1\.75em;/);
     assert.match(css, /\.cm-line\.cm-atomic-blockquote \{/);
-    assert.match(css, /background: color-mix\(in oklch, var\(--muted\) 62%, transparent\);/);
+    assert.match(css, /border-left: 2px solid color-mix\(in oklch, var\(--primary\) 50%, transparent\);/);
+    assert.match(css, /\.cm-line\.cm-atomic-hr::after \{/);
     assert.match(css, /\.cm-line\.cm-atomic-fenced-code \{/);
     assert.match(css, /font-size: 0\.8125rem;/);
     assert.match(css, /padding-left: 1rem;/);
@@ -140,13 +143,16 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(css, /\.cm-searchMatch \{/);
   });
 
-  it('restyles outline, toolbar, and reading chip in the same language', () => {
+  it('restyles outline and the selection bar, not a top chrome strip', () => {
     assert.match(css, /\.outline-panel \{[\s\S]*background: var\(--card/);
     assert.match(css, /\.outline-item-active \{[\s\S]*background: color-mix\(in oklch, var\(--primary/);
     assert.equal(css.includes('box-shadow: inset 2px 0 0 var(--primary'), false);
-    assert.match(css, /\.atomic-reading-chip \{[\s\S]*border-radius: 2px;/);
-    assert.equal(/\.atomic-reading-chip \{[^}]*text-transform:\s*uppercase/.test(css), false);
-    assert.match(css, /\.atomic-toolbar-btn \{[\s\S]*min-height: 22px;/);
+    assert.match(css, /\.selection-format-bar \{[\s\S]*border-radius: var\(--radius-md/);
+    assert.match(css, /--radius-sm: calc\(var\(--radius\) - 4px\);/);
+    assert.match(css, /outline: 2px solid var\(--ring/);
+    assert.match(css, /scrollbar-width: thin;/);
+    assert.equal(css.includes('.atomic-chrome'), false);
+    assert.match(css, /html\.transitions-ready/);
     assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
     assert.match(css, /font-family: var\(--vscode-font-family\)/);
     assert.match(css, /font-size: var\(--vscode-font-size, 13px\)/);

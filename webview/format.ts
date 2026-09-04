@@ -23,6 +23,8 @@ export function applyFormat(
       return wrapInline(text, start, end, '**', 'bold');
     case 'italic':
       return wrapInline(text, start, end, '*', 'italic');
+    case 'strike':
+      return wrapInline(text, start, end, '~~', 'strike');
     case 'inlineCode':
       return wrapInline(text, start, end, '`', 'code');
     case 'link':

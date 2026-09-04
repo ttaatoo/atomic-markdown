@@ -134,6 +134,10 @@ export function isApplyingExternal(): boolean {
   return applyingExternal;
 }
 
+export function currentEditorView(): EditorView | null {
+  return view;
+}
+
 export function dispatchFormat(action: FormatAction): boolean {
   if (!view || view.state.readOnly) {
     return false;

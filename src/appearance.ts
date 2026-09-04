@@ -4,7 +4,6 @@ export interface AppearanceSettings {
   fontSize: number | null;
   lineHeight: number;
   contentWidthCh: number;
-  toolbarEnabled: boolean;
   outlineEnabled: boolean;
 }
 
@@ -13,7 +12,6 @@ export const APPEARANCE_DEFAULTS = {
   fontSize: null as number | null,
   lineHeight: 1.7,
   contentWidthCh: 70,
-  toolbarEnabled: false,
   outlineEnabled: true,
 };
 
@@ -76,7 +74,6 @@ export function appearanceFromConfig(
     fontSize: clampFontSize(get('fontSize')),
     lineHeight: clampLineHeight(get('lineHeight')),
     contentWidthCh: clampContentWidthCh(get('contentWidth')),
-    toolbarEnabled: parseBooleanSetting(get('toolbar.enabled'), APPEARANCE_DEFAULTS.toolbarEnabled),
     outlineEnabled: parseBooleanSetting(get('outline.enabled'), APPEARANCE_DEFAULTS.outlineEnabled),
   };
 }

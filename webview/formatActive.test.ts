@@ -12,6 +12,7 @@ describe('detectFormatActive', () => {
     assert.equal(detectFormatActive(md, 7, 7).bold, true);
     assert.equal(detectFormatActive(md, 0, 0).bold, false);
     assert.equal(detectFormatActive(md, 17, 21).italic, true);
+    assert.equal(detectFormatActive('~~gone~~', 0, 8).strike, true);
     assert.equal(detectFormatActive(md, 26, 32).inlineCode, true);
   });
 

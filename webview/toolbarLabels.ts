@@ -11,6 +11,8 @@ export function formatActionTitle(action: FormatAction, platform: string): strin
       return `Bold (${mod}B)`;
     case 'italic':
       return `Italic (${mod}I)`;
+    case 'strike':
+      return 'Strikethrough';
     case 'link':
       return `Link (${mod}K)`;
     case 'inlineCode':
@@ -28,8 +30,4 @@ export function formatActionTitle(action: FormatAction, platform: string): strin
 
 export function outlineToggleTitle(open: boolean): string {
   return open ? 'Hide outline' : 'Show outline';
-}
-
-export function formatStripTitle(open: boolean): string {
-  return open ? 'Hide formatting' : 'Show formatting';
 }

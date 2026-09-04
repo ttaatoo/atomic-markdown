@@ -3,12 +3,13 @@ import type { FormatAction } from '../src/protocol.ts';
 export type FormatActiveMap = Partial<Record<FormatAction, boolean>>;
 
 /**
- * Cheap selection/line checks for toolbar pressed state.
+ * Cheap selection/line checks for floating-bar pressed state.
  * Looks at the current line (lists/headings) and immediate wrap markers.
  */
 const FORMAT_KEYS: FormatAction[] = [
   'bold',
   'italic',
+  'strike',
   'inlineCode',
   'link',
   'heading',
@@ -35,6 +36,7 @@ export function detectFormatActive(text: string, from: number, to: number): Form
   return {
     bold: hasWrap(text, start, end, '**'),
     italic: hasItalic(text, start, end),
+    strike: hasWrap(text, start, end, '~~'),
     inlineCode: hasWrap(text, start, end, '`'),
     link: isLinkActive(text, start, end),
     heading,

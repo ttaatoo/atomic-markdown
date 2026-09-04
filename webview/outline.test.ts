@@ -197,7 +197,7 @@ describe('outline panel CSS', () => {
   it('styles the empty state and the live current-heading mark', () => {
     assert.match(css, /\.outline-empty\s*\{/);
     assert.match(css, /\.outline-item-active\s*\{/);
-    assert.match(css, /\.atomic-reading-chip\s*\{/);
-    assert.match(css, /\.atomic-toolbar-icon\s*\{/);
+    assert.match(css, /\.outline-twisty/);
+    assert.match(css, /\.outline-icon-btn/);
   });
 });

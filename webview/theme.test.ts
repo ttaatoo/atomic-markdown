@@ -55,7 +55,6 @@ describe('appearance CSS variables', () => {
       fontSize: null,
       lineHeight: 1.6,
       contentWidthCh: 72,
-      toolbarEnabled: true,
       outlineEnabled: true,
     });
     assert.equal(vars['--atomic-user-font'], null);
@@ -71,7 +70,6 @@ describe('appearance CSS variables', () => {
       fontSize: 18,
       lineHeight: 1.6,
       contentWidthCh: 72,
-      toolbarEnabled: true,
       outlineEnabled: true,
     });
     assert.equal(vars['--atomic-user-size'], '18px');
@@ -93,7 +91,6 @@ describe('appearance CSS variables', () => {
       fontSize: 17,
       lineHeight: 1.7,
       contentWidthCh: 70,
-      toolbarEnabled: true,
       outlineEnabled: true,
     });
     assert.equal(store.get('--atomic-user-font'), 'Georgia, serif');
@@ -104,7 +101,6 @@ describe('appearance CSS variables', () => {
       fontSize: null,
       lineHeight: 1.7,
       contentWidthCh: 70,
-      toolbarEnabled: true,
       outlineEnabled: true,
     });
     assert.equal(store.has('--atomic-user-font'), false);

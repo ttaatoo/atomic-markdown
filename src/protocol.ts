@@ -6,6 +6,7 @@ export type { AppearanceSettings };
 export type FormatAction =
   | 'bold'
   | 'italic'
+  | 'strike'
   | 'inlineCode'
   | 'link'
   | 'heading'
@@ -16,6 +17,7 @@ export type FormatAction =
 const FORMAT_ACTIONS = new Set<FormatAction>([
   'bold',
   'italic',
+  'strike',
   'inlineCode',
   'link',
   'heading',

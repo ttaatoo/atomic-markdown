@@ -23,7 +23,7 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 - Toolbar format-active detection; outline heading-at-scroll-position (not leftover caret); find Ctrl/F + Escape routing and package.json when clauses
 - Appearance clamps and CSS variable apply/remove
 - Plannotator token mapping (exact dark/light oklch, no theme-follow mute), writing-surface CSS contracts, and optional Inter/Geist latin font bundling
-- Feishu outline placement (push rail / icon rail / last-resort overlay), nested heading collapse + prune, YAML frontmatter / thematic-break `---` excluded from headings; toolbar default off; image failure copy
+- Feishu outline placement (push rail / icon rail / last-resort overlay), nested heading collapse + prune, YAML frontmatter / thematic-break `---` excluded from headings; no top Format strip; selection-bar show/hide; image failure copy
 
 **Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, listener leaks under the VS Code host, or the full mermaid-scroll renderer path (see below).
 
@@ -63,13 +63,13 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
     **Repro (before the fix):** Open a long `.md` with several mermaid fences separated by headings (welcome.md plus extra flowcharts is enough). Open with Atomic. Scroll through the mermaid sections with the wheel/trackpad. Failure: the webview became a solid Plannotator gray panel (html/body background). Other Atomic tabs stayed blank until **Developer: Reload Window**.  
     **Root cause:** Mermaid `Decoration.replace` widgets remounted on every selection change and on viewport enter/leave. `toDOM` applied SVG then called `getBoundingClientRect` + `view.requestMeasure()` during CM6 DOM updates. Mermaid SVGs often ship `width/height="100%"`, which with CM6 `estimatedHeight` oscillated and could collapse the scroller. An uncaught exception or renderer hang in that loop tore down the React tree; `html.theme-plannotator` stayed gray. The shared webview renderer made it look like every document died.  
     **Fix:** Rebuild mermaid decorations only when doc/theme/readOnly/fence-occupancy changes; reuse widgets via `eq`; apply cached SVG without a synchronous measure when height is already known; normalize 100% SVG dimensions; isolate mermaid exceptions. Theme still uses a `StateEffect` (no dummy doc change) so diagrams re-theme.  
-    **Verify:** Scroll a multi-mermaid doc — toolbar/editor stay mounted. Invalid mermaid still shows `role=alert`. Toggle light/dark — diagrams re-render.
+    **Verify:** Scroll a multi-mermaid doc — editor stays mounted. Invalid mermaid still shows `role=alert`. Toggle light/dark — diagrams re-render.
 
 10. **Image paste / drop**  
     Save the markdown file. Paste a PNG from the clipboard; confirm `assets/` (or configured dir) gets a unique file and `![](./assets/…)` is inserted at the caret. Undo removes the markdown link (file on disk may remain). Drop a `.jpg`. Untitled unsaved buffer: inline notice plus host error, clipboard unchanged. A write failure shows “Couldn't save image to assets/…” in the webview.
 
-11. **Toolbar / shortcuts**  
-    Toolbar is off by default: **Format** reveals the strip; `atomicMarkdown.toolbar.enabled` keeps it on. Cmd/Ctrl+B / I / K wrap selection (tooltips name the shortcuts). Heading button cycles H1–H3. Icons (not letter glyphs) and pressed state when the caret is already in that mark. Confirm Cmd/Ctrl+S still saves (not hijacked). Format buttons stay disabled in reading mode.
+11. **Selection format bar / shortcuts**  
+    There must be **no** top Format strip, Reading chip, or outline toggle in the webview. Select a word in edit mode: a floating bar appears near the selection (bold / italic / strike / code / link). Click bold — markdown wraps and the bar’s pressed state updates. Collapse the selection or switch to reading mode: the bar disappears. Cmd/Ctrl+B / I / K still wrap with no bar on screen. Confirm Cmd/Ctrl+S still saves (not hijacked). Heading/list formats remain available via **Format Selection**.
 
 11b. **Open with Atomic replaces the tab**  
     Open `welcome.md` in the default text editor. Command Palette / title icon → **Open with Atomic Markdown**. The text tab should become Atomic (same tab slot), not a second same-named tab. Explorer context on a `.md` that is already open as text should also reopen in place. **Reopen Editor With… → Text Editor** still works.
@@ -78,15 +78,15 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
     With Atomic focused, Cmd/Ctrl+F must open Atomic’s in-editor find (not the workbench Search sidebar). Escape closes that find while it is open and does nothing special when it is closed. Title search icon still calls `atomicMarkdown.find` → `openSearch`.
 
 12. **Theme / typography**  
-    With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. The canvas must use Plannotator’s exact dark or light tokens (saturated primary/accent), not VS Code editor background. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash). Empty `fontFamily` / unset `fontSize` must match the workbench / editor font (Explorer/tabs), not bundled Inter. Glance: ~70ch centered prose, heading size steps, primary quote rail, rounded/muted tables, primary-tinted selection, outline card + current-heading wash, Reading chip.
+    With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. The canvas must use Plannotator’s exact dark or light tokens (saturated primary/accent), not VS Code editor background. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash). Empty `fontFamily` / unset `fontSize` must match the workbench / editor font (Explorer/tabs), not bundled Inter. Glance: ~70ch centered prose, heading size steps, primary quote rail, rounded/muted tables, primary-tinted selection, outline card + current-heading wash. No top chrome strip.
 
 13. **Outline**  
-    Wide window: outline visible as a **push rail** (writing column shrinks; prose is not covered). Nested headings have twisties; collapse a parent and reload is not required — state lasts the session. After jumping to **Tables**, wheel-scroll until **Fences** is at the top: the outline highlight must move to Fences (scroll-driven, not stuck on the click/caret). Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: teaching empty state. Toggle from title, Format/outline control, and the panel chevron/icon — none may be a dead zone. Collapse to the thin icon rail and expand again without losing caret/scroll. Setting `atomicMarkdown.outline.enabled` false hides it. Frontmatter in welcome.md must not appear in the outline. Document is never given a `[TOC]` block.  
+    Wide window: outline visible as a **push rail** (writing column shrinks; prose is not covered). Nested headings have twisties; collapse a parent and reload is not required — state lasts the session. After jumping to **Tables**, wheel-scroll until **Fences** is at the top: the outline highlight must move to Fences (scroll-driven, not stuck on the click/caret). Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: teaching empty state. Toggle only from the panel chevron/icon rail (and the host **Toggle Outline** command) — there is no webview top-bar outline control. Collapse to the thin icon rail and expand again without losing caret/scroll. Setting `atomicMarkdown.outline.enabled` false hides it. Frontmatter in welcome.md must not appear in the outline. Document is never given a `[TOC]` block.  
     **Push, not overlay, at normal narrow widths:** shrink the Atomic editor group to ~350–500px. Open outline. The writing column must **shrink** beside the rail (not stay full-width under a drawer). Toggle Show/Hide both ways.  
     **Last-resort overlay:** only when the frame is extremely narrow (≤240px) may the expanded TOC float over the prose. Escape (when find is closed) or backdrop click then collapses to the icon rail.
 
 13b. **Reading mode**  
-    Toggle reading mode: title icon switches book ↔ pencil, and the webview shows a **Reading** chip. Format buttons stay disabled. Theme toggle remains visible in `followVscode`.
+    Toggle reading mode: title icon switches book ↔ pencil. The webview must **not** show a Reading chip or any top strip. The selection format bar must not appear. Theme toggle remains in the editor title.
 
 14. **Disposals**  
     Open Atomic, close, open again on the same file several times. No duplicate image inserts per paste, no stuck generation.

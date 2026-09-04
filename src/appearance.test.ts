@@ -39,7 +39,6 @@ describe('appearance clamps', () => {
       fontSize: 20,
       lineHeight: 1.8,
       contentWidth: 80,
-      'toolbar.enabled': false,
       'outline.enabled': true,
     };
     const appearance = appearanceFromConfig((key) => values[key], 'dark');
@@ -48,13 +47,11 @@ describe('appearance clamps', () => {
     assert.equal(appearance.fontSize, 20);
     assert.equal(appearance.lineHeight, 1.8);
     assert.equal(appearance.contentWidthCh, 80);
-    assert.equal(appearance.toolbarEnabled, false);
     assert.equal(appearance.outlineEnabled, true);
   });
 
-  it('defaults toolbar off and font size to the workbench', () => {
+  it('defaults outline on and font size to the workbench', () => {
     const appearance = appearanceFromConfig(() => undefined, 'followVscode');
-    assert.equal(appearance.toolbarEnabled, false);
     assert.equal(appearance.outlineEnabled, true);
     assert.equal(appearance.fontFamily, '');
     assert.equal(appearance.fontSize, null);

@@ -12,7 +12,7 @@ This is a **v0.1 preview**. It is not published to the Marketplace and collects 
 
 Add captures from an F5 Extension Development Host here when you have them:
 
-- `docs/screenshots/editor.png` — edit mode with outline and compact toolbar
+- `docs/screenshots/editor.png` — edit mode with outline and selection format bar
 - `docs/screenshots/reading.png` — reading mode
 - `docs/screenshots/mermaid.png` — mermaid fence rendered as SVG
 
@@ -53,14 +53,14 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 ## Features (v0.1)
 
 - Inline live preview (syntax hides on inactive lines)
-- Optional formatting toolbar (off by default; a single **Format** control reveals it). Shortcuts still work: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link. Set `atomicMarkdown.toolbar.enabled` to always show the strip
-- Heading outline (目录) as a Feishu-style left sidebar that resizes the writing column — ATX `#`–`######` and setext H1/H2; nested headings collapse with twisties; collapse the rail to a thin icon strip; highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
+- No top format strip. Select text in edit mode to get a compact floating bar (bold / italic / strike / code / link). Shortcuts still work with no chrome: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link
+- Heading outline (目录) as a Feishu-style left sidebar that resizes the writing column — ATX `#`–`######` and setext H1/H2; nested headings collapse with twisties; collapse the rail to a thin icon strip from the panel itself (no top-bar outline control); highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
 - Paste or drop png/jpeg/gif/webp/svg images; the extension host saves them under `atomicMarkdown.images.directory` (default `assets` next to the Markdown file) and inserts a relative `![]()` at the caret
 - WYSIWYG tables
 - Clickable task checkboxes (`- [ ]` / `- [x]`)
 - Fence highlighting for ~20 languages
 - Mermaid fenced blocks (`mermaid` info string) render as SVG (bundled; no CDN). Invalid syntax shows an inline error; the fence text on disk is unchanged and stays editable. Scrolling through diagrams must not blank the webview (see [docs/QA.md](docs/QA.md))
-- Reading mode (editor title book/pencil icons plus an in-webview **Reading** chip, or **Atomic Markdown: Toggle Reading Mode**)
+- Reading mode via the editor title book/pencil icons or **Atomic Markdown: Toggle Reading Mode** (no in-webview Reading chip)
 - Find inside the editor (`Cmd/Ctrl+F` while Atomic is active, or the title search icon). **Escape** closes the find bar while it is open and is not swallowed when it is closed
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is. `data:`, `javascript:`, and `file:` image URIs are rejected.
 - Writing surface colors are Plannotator’s exact default dark/light oklch tokens (not muted, not VS Code editor colors). Chrome and default body type use the workbench / editor font tokens so the pane matches Explorer and tabs. Bundled Inter / Geist Mono apply only if you set `fontFamily`. Typography settings apply live without remounting. This is not a Plannotator clone — Atomic Editor stays the engine.
@@ -79,17 +79,17 @@ Untitled documents (or files without a writable directory) show an error and **d
 
 SVG files on disk are treated as untrusted image data: they are displayed with `<img>`, not executed. Inline `data:` image URIs are rejected (paste/drop saves a file instead).
 
-## Toolbar and shortcuts
+## Formatting and shortcuts
 
-The toolbar is off by default (calm paper, not a Word ribbon). A **Format** control reveals the icon strip for the session; `atomicMarkdown.toolbar.enabled` keeps it always on. Formatting still works from the scoped keybindings above. Buttons show a pressed state when the caret is already in bold/italic/code/heading/list when that is cheap to detect. Tooltips include the shortcuts.
+There is no top Format strip. In edit mode, selecting text shows a compact floating bar (bold, italic, strikethrough, inline code, link) near the selection. It hides when the selection collapses, in reading mode, or when focus leaves the editor. Pressed state reflects cheap wrap detection. Tooltips include the shortcuts.
 
-Actions wrap the selection (or a placeholder) and leave a sensible caret. Heading cycles none → H1 → H2 → H3 → none. List buttons toggle bullet, numbered, and task prefixes.
+**Cmd/Ctrl+B**, **I**, and **K** still format with no chrome. The Command Palette **Format Selection** action still runs heading cycle and list toggles (none → H1 → H2 → H3 → none; bullet / numbered / task).
 
 These shortcuts are scoped with `when: activeCustomEditorId == ttaatoo.atomicMarkdown` so they do not replace VS Code **Save**, **Close**, or the Command Palette.
 
 ## Outline
 
-`atomicMarkdown.outline.enabled` (default `true`) allows a Feishu-style heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Hide/Show Outline in the chrome and the panel chevron always toggle it (no dead control).
+`atomicMarkdown.outline.enabled` (default `true`) allows a Feishu-style heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Collapse and expand live on the outline panel (icon rail / header chevron). The command **Atomic Markdown: Toggle Outline** still works from the Command Palette / editor title. There is no outline control on a webview top bar.
 
 The expanded rail is a **push sidebar**: it takes a fixed column and **resizes the writing surface** instead of covering it. Collapse it to a thin icon rail; expand again without losing scroll or caret. Nested headings have twisties (session-persisted). Overlay is last resort only when the frame is extremely narrow (≤240px). YAML frontmatter and `---` thematic breaks are not treated as headings.
 

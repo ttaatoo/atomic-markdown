@@ -15,6 +15,8 @@ describe('applyFormatToString', () => {
       to: 6,
     });
     assert.equal(applyFormatToString('x', 0, 1, 'italic').text, '*x*');
+    assert.equal(applyFormatToString('x', 0, 1, 'strike').text, '~~x~~');
+    assert.equal(applyFormatToString('~~x~~', 0, 5, 'strike').text, 'x');
     assert.equal(applyFormatToString('x', 0, 1, 'inlineCode').text, '`x`');
   });
 
