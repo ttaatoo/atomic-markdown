@@ -9,10 +9,12 @@ import {
   outlineAutoCollapsed,
   outlineDebounceMs,
   outlinePanelShouldRender,
+  outlinePlacement,
   outlineTreeFromMarkdown,
   outlineUsesOverlay,
   parseAtxHeadingLine,
   parseOutlineHeadings,
+  shouldWindowCloseOutlineOverlay,
 } from './outline.ts';
 
 describe('parseOutlineHeadings', () => {
@@ -105,11 +107,23 @@ describe('parseOutlineHeadings', () => {
     assert.equal(outlineAutoCollapsed(900), false);
     assert.equal(outlineAutoCollapsed(641), false);
     assert.equal(outlineAutoCollapsed(640), true);
+    assert.equal(outlineUsesOverlay(350), true);
     assert.equal(outlineUsesOverlay(500), true);
     assert.equal(outlineUsesOverlay(800), false);
     assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 800 }), true);
     assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 500 }), true);
     assert.equal(outlinePanelShouldRender({ enabled: true, open: false, editorWidthPx: 800 }), false);
+    assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 400 }), {
+      show: true,
+      mount: 'overlay',
+    });
+    assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 900 }), {
+      show: true,
+      mount: 'rail',
+    });
+    assert.equal(shouldWindowCloseOutlineOverlay({ findOpen: true, overlayOpen: true }), false);
+    assert.equal(shouldWindowCloseOutlineOverlay({ findOpen: false, overlayOpen: true }), true);
+    assert.equal(shouldWindowCloseOutlineOverlay({ findOpen: false, overlayOpen: false }), false);
   });
 });
 
@@ -119,8 +133,22 @@ describe('outline panel CSS', () => {
   it('does not pin a crushing 11rem minimum and uses a drawer instead of display:none', () => {
     assert.equal(/min-width:\s*11rem/.test(css), false);
     assert.match(css, /min-width:\s*0/);
-    assert.match(css, /\.editor-shell\.outline-overlay \.outline-panel/);
     assert.equal(/display:\s*none/.test(css), false);
+  });
+
+  it('takes the narrow outline out of the writing-row flex flow', () => {
+    assert.match(css, /\.editor-frame\s*\{/);
+    assert.match(css, /\.outline-panel\.outline-panel-overlay/);
+    const overlayAt = css.indexOf('.outline-panel.outline-panel-overlay');
+    const overlayBlock = css.slice(overlayAt, css.indexOf('}', overlayAt) + 1);
+    assert.match(overlayBlock, /position:\s*absolute/);
+    assert.match(overlayBlock, /flex:\s*none/);
+    assert.equal(/flex:\s*0 1 15\.5rem/.test(overlayBlock), false);
+    assert.match(css, /@container atomic-editor \(max-width: 640px\)/);
+    const queryAt = css.indexOf('@container atomic-editor (max-width: 640px)');
+    const queryBlock = css.slice(queryAt, queryAt + 280);
+    assert.match(queryBlock, /\.editor-shell > \.outline-panel/);
+    assert.match(queryBlock, /position:\s*absolute/);
   });
 
   it('styles the empty state and the live current-heading mark', () => {

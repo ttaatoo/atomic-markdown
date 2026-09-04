@@ -15,10 +15,11 @@ import { OutlinePanel } from './OutlinePanel';
 import {
   defaultOutlineOpen,
   outlineDebounceMs,
-  outlinePanelShouldRender,
+  outlinePlacement,
   outlineTreeFromMarkdown,
   outlineUsesOverlay,
   parseOutlineHeadings,
+  shouldWindowCloseOutlineOverlay,
   type OutlineNode,
 } from './outline';
 import { hostFailureNotice } from './notices';
@@ -67,12 +68,14 @@ export function App() {
   const readOnlyRef = useRef(false);
   const outlineSourceRef = useRef('');
   const outlineEnabledRef = useRef(true);
+  const outlineOpenRef = useRef(false);
   const pendingImages = useRef(new Map<string, true>());
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const shellWidthRef = useRef(typeof window === 'undefined' ? 1200 : window.innerWidth);
-  const [shellWidth, setShellWidth] = useState(shellWidthRef.current);
+  const shellWidthRef = useRef(0);
+  const [shellWidth, setShellWidth] = useState(0);
 
   readOnlyRef.current = readOnly;
+  outlineOpenRef.current = outlineOpen;
 
   useEffect(() => observeTheme(() => themeSettingRef.current), []);
 
@@ -227,16 +230,28 @@ export function App() {
 
   useEffect(() => {
     const el = shellRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') {
+    if (!el) {
       return;
     }
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (typeof width !== 'number') {
+    const applyWidth = (width: number) => {
+      if (!Number.isFinite(width) || width <= 0) {
+        return;
+      }
+      if (Math.abs(width - shellWidthRef.current) < 0.5) {
         return;
       }
       shellWidthRef.current = width;
       setShellWidth(width);
+    };
+    applyWidth(el.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (typeof width === 'number') {
+        applyWidth(width);
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -296,12 +311,22 @@ export function App() {
         return;
       }
       const handle = editorHandleRef.current;
-      if (!handle || !shouldWindowCloseFind({ searchOpen: handle.isSearchOpen() })) {
+      if (handle && shouldWindowCloseFind({ searchOpen: handle.isSearchOpen() })) {
+        event.preventDefault();
+        event.stopPropagation();
+        handle.closeSearch();
         return;
       }
-      event.preventDefault();
-      event.stopPropagation();
-      handle.closeSearch();
+      if (
+        shouldWindowCloseOutlineOverlay({
+          findOpen: Boolean(handle?.isSearchOpen()),
+          overlayOpen: outlineOpenRef.current && outlineUsesOverlay(shellWidthRef.current),
+        })
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        setOutlineOpen(false);
+      }
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
@@ -417,12 +442,13 @@ export function App() {
     return <div className="app" />;
   }
 
-  const showOutline = outlinePanelShouldRender({
+  const placement = outlinePlacement({
     enabled: outlineEnabled,
     open: outlineOpen,
     editorWidthPx: shellWidth,
   });
-  const outlineOverlay = showOutline && outlineUsesOverlay(shellWidth);
+  const showOutline = placement.show;
+  const outlineOverlay = placement.show && placement.mount === 'overlay';
   const showFormats = !readOnly && (toolbarEnabled || formatStripOpen);
   const showChrome = readOnly || outlineEnabled || !readOnly;
   const chromeQuiet = !readOnly && !toolbarEnabled && !formatStripOpen;
@@ -469,7 +495,22 @@ export function App() {
           ) : null}
         </div>
       ) : null}
-      <div className={`editor-shell${outlineOverlay ? ' outline-overlay' : ''}`} ref={shellRef}>
+      <div className={`editor-frame${outlineOverlay ? ' outline-overlay' : ''}`} ref={shellRef}>
+        <div className="editor-shell">
+          {showOutline && !outlineOverlay ? (
+            <OutlinePanel nodes={outlineNodes} activeFrom={activeHeadingFrom} onSelect={onOutlineSelect} />
+          ) : null}
+          <AtomicCodeMirrorEditor
+            documentId={session.uri}
+            markdownSource={session.text}
+            readOnly={readOnly}
+            onMarkdownChange={onMarkdownChange}
+            onLinkClick={onLinkClick}
+            editorHandleRef={editorHandleRef}
+            codeLanguages={CODE_LANGUAGES}
+            extensions={EXTRA_EXTENSIONS}
+          />
+        </div>
         {outlineOverlay ? (
           <button
             type="button"
@@ -478,24 +519,14 @@ export function App() {
             onClick={() => setOutlineOpen(false)}
           />
         ) : null}
-        {showOutline ? (
+        {outlineOverlay ? (
           <OutlinePanel
             nodes={outlineNodes}
             activeFrom={activeHeadingFrom}
-            overlay={outlineOverlay}
+            overlay
             onSelect={onOutlineSelect}
           />
         ) : null}
-        <AtomicCodeMirrorEditor
-          documentId={session.uri}
-          markdownSource={session.text}
-          readOnly={readOnly}
-          onMarkdownChange={onMarkdownChange}
-          onLinkClick={onLinkClick}
-          editorHandleRef={editorHandleRef}
-          codeLanguages={CODE_LANGUAGES}
-          extensions={EXTRA_EXTENSIONS}
-        />
       </div>
     </div>
   );

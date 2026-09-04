@@ -400,14 +400,24 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   background: color-mix(in oklch, var(--primary) 28%, transparent);
 }
 
-.editor-shell {
+/* Positioning + width measurement context. Overlay drawers hang here, not in the flex row. */
+.editor-frame {
   position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+  container-name: atomic-editor;
+}
+
+/* Wide mode: outline + editor sit in this row. Overlay mode: this row is the editor only. */
+.editor-shell {
   flex: 1;
   display: flex;
   min-height: 0;
   min-width: 0;
-  container-type: inline-size;
-  container-name: atomic-editor;
 }
 
 .editor-shell > .atomic-cm-editor {
@@ -557,6 +567,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   opacity: 0.85;
 }
 
+/* Side rail (wide). Never apply this as the only layout when the frame is narrow. */
 .outline-panel {
   flex: 0 1 15.5rem;
   width: 15.5rem;
@@ -579,17 +590,38 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   cursor: default;
 }
 
-.editor-shell.outline-overlay .outline-panel,
-.outline-panel.outline-panel-overlay {
+/*
+ * Overlay drawer: out of the writing-row flex flow so it cannot crush the column.
+ * JS mounts `.outline-panel-overlay` as a sibling of `.editor-shell`.
+ * The container query is a fallback if a panel is still a flex child of a narrow shell.
+ */
+.outline-panel.outline-panel-overlay,
+.editor-frame.outline-overlay .outline-panel {
   position: absolute;
   z-index: 4;
   top: 0;
+  right: auto;
   bottom: 0;
   left: 0;
-  width: min(16.5rem, 86%);
-  max-width: 86%;
   flex: none;
+  width: min(16.5rem, 86%);
+  max-width: 16.5rem;
+  min-width: 0;
   box-shadow: 0 10px 32px color-mix(in oklch, var(--foreground, #000) 10%, transparent);
+}
+
+@container atomic-editor (max-width: 640px) {
+  .editor-shell > .outline-panel {
+    position: absolute;
+    z-index: 4;
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    flex: none;
+    width: min(16.5rem, 86%);
+    max-width: 16.5rem;
+  }
 }
 
 .outline-panel-title {

@@ -231,3 +231,25 @@ export function outlinePanelShouldRender(input: {
 }): boolean {
   return input.enabled && input.open;
 }
+
+export type OutlineMount = 'rail' | 'overlay';
+
+/** Where the open outline lives. Overlay is never a flex column in the writing row. */
+export function outlinePlacement(input: {
+  enabled: boolean;
+  open: boolean;
+  editorWidthPx: number;
+}): { show: false } | { show: true; mount: OutlineMount } {
+  if (!outlinePanelShouldRender(input)) {
+    return { show: false };
+  }
+  return {
+    show: true,
+    mount: outlineUsesOverlay(input.editorWidthPx) ? 'overlay' : 'rail',
+  };
+}
+
+/** Escape closes a narrow drawer only when find is not already consuming Escape. */
+export function shouldWindowCloseOutlineOverlay(input: { findOpen: boolean; overlayOpen: boolean }): boolean {
+  return !input.findOpen && input.overlayOpen;
+}

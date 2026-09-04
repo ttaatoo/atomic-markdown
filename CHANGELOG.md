@@ -3,6 +3,7 @@
 ## 0.1.0
 
 - Critique pass: outline overlay drawer below ~640px (no dead Show Outline); YAML frontmatter / `---` no longer invent outline headings; image save failures show an inline notice; `prefers-reduced-motion`; larger toolbar hit targets; toolbar off by default with a Format reveal; quieter accent and follow-workbench neutrals.
+- Narrow outline mounts as a floating drawer outside the writing-row flex (not a crushing split pane); Escape/backdrop close.
 - Visual fidelity: bundle Inter Variable / Geist Mono Variable; writing surface and chrome (outline, toolbar, reading chip) use Plannotator tokens and prose treatment without replacing Atomic Editor.
 - UX polish: mermaid scroll no longer blanks the webview; Open with Atomic replaces the current tab; SVG toolbar with pressed states; outline highlight follows the visible heading while scrolling; Ctrl/Cmd+F opens Atomic find (not the sidebar); Escape closes find only while it is open; reading-mode chip.
 - Editing reliability: per-panel sessions (`supportsMultipleEditorsPerDocument`), per-document serialized applies, versioned one-shot echo tickets, abort+catch-up when the document moves before `applyEdit`.
