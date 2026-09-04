@@ -10,6 +10,7 @@ import {
   timestampBasename,
   uniqueFilename,
   untitledImageError,
+  imageWriteFailedMessage,
   planSavedImagePath,
 } from './imageSave.ts';
 
@@ -85,5 +86,7 @@ describe('image filenames', () => {
       false,
     );
     assert.match(untitledImageError(), /Save the Markdown file first/);
+    assert.equal(imageWriteFailedMessage('assets'), "Couldn't save image to assets/. Check folder permissions.");
+    assert.equal(imageWriteFailedMessage('shots/'), "Couldn't save image to shots/. Check folder permissions.");
   });
 });

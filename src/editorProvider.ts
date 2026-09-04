@@ -13,6 +13,8 @@ import {
   decodeBase64Bytes,
   IMAGE_SAVE_MAX_BYTES,
   planSavedImagePath,
+  imageReadFailedMessage,
+  imageWriteFailedMessage,
   untitledImageError,
 } from './imageSave';
 import type { HostToWebview, WebviewToHost } from './protocol';
@@ -25,7 +27,7 @@ import {
   type VersionedEcho,
 } from './sync';
 import { toLineFeed } from './text';
-import { currentPaletteKind, readAppearance, themeUpdateTarget } from './themeConfig';
+import { currentPaletteKind, readAppearance, readThemeSetting, themeUpdateTarget } from './themeConfig';
 import { nextExplicitTheme } from './themeSetting';
 import {
   collectLocalResourceRoots,
@@ -134,6 +136,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       webviewPanel.webview,
       this.context.extensionUri,
       currentPaletteKind(),
+      readThemeSetting(),
     );
   }
 
@@ -288,11 +291,11 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     try {
       bytes = decodeBase64Bytes(message.base64);
     } catch {
-      fail('Could not read the image data.');
+      fail(imageReadFailedMessage());
       return;
     }
     if (bytes.byteLength === 0) {
-      fail('The image was empty.');
+      fail('That image was empty.');
       return;
     }
     if (bytes.byteLength > IMAGE_SAVE_MAX_BYTES) {
@@ -342,7 +345,7 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
     try {
       await vscode.workspace.fs.writeFile(dest, bytes);
     } catch (error) {
-      fail(error instanceof Error ? error.message : 'Could not write the image file.');
+      fail(imageWriteFailedMessage(planned.directory));
       return;
     }
 

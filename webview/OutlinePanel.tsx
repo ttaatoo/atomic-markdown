@@ -3,13 +3,17 @@ import type { OutlineNode } from './outline';
 export function OutlinePanel(props: {
   nodes: OutlineNode[];
   activeFrom?: number;
+  overlay?: boolean;
   onSelect: (from: number) => void;
 }) {
   return (
-    <nav className="outline-panel" aria-label="Document outline">
+    <nav
+      className={`outline-panel${props.overlay ? ' outline-panel-overlay' : ''}`}
+      aria-label="Document outline"
+    >
       <div className="outline-panel-title">Outline</div>
       {props.nodes.length === 0 ? (
-        <p className="outline-empty">No headings in this document.</p>
+        <p className="outline-empty">No headings yet. Add a # heading to see it here.</p>
       ) : (
         <OutlineList nodes={props.nodes} activeFrom={props.activeFrom} onSelect={props.onSelect} />
       )}

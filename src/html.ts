@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
-import { htmlThemeClass, type PaletteKind } from './themeSetting';
+import { htmlThemeClass, type PaletteKind, type ThemeSetting } from './themeSetting';
 import { imgSrcCsp } from './webviewCsp';
 
 export function renderWebviewHtml(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
   palette: PaletteKind,
+  theme: ThemeSetting = 'followVscode',
 ): string {
   const nonce = createNonce();
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
@@ -24,7 +25,7 @@ export function renderWebviewHtml(
   ].join('; ');
 
   return `<!DOCTYPE html>
-<html lang="en" class="${htmlThemeClass(palette)}" data-theme="${palette}">
+<html lang="en" class="${htmlThemeClass(palette, theme === 'followVscode')}" data-theme="${palette}">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="${csp}" />

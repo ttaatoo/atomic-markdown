@@ -10,6 +10,7 @@ import {
   outlineDebounceMs,
   outlinePanelShouldRender,
   outlineTreeFromMarkdown,
+  outlineUsesOverlay,
   parseAtxHeadingLine,
   parseOutlineHeadings,
 } from './outline.ts';
@@ -36,12 +37,31 @@ describe('parseOutlineHeadings', () => {
     assert.equal(tree[0].children[0]?.text, 'Deep');
   });
 
-  it('parses setext H1/H2', () => {
-    const md = ['Hello', '=====', '', 'World', '-----'].join('\n');
+  it('parses setext H1 and short-dash H2, not thematic-break ---', () => {
+    const md = ['Hello', '=====', '', 'World', '--'].join('\n');
     const headings = parseOutlineHeadings(md);
     assert.deepEqual(
       headings.map((h) => `${h.level}:${h.text}`),
       ['1:Hello', '2:World'],
+    );
+    assert.deepEqual(
+      parseOutlineHeadings(['After a paragraph', '---', '', '# Real'].join('\n')).map((h) => `${h.level}:${h.text}`),
+      ['1:Real'],
+    );
+  });
+
+  it('skips YAML frontmatter so welcome.md-style keys are not setext headings', () => {
+    const welcome = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../samples/welcome.md'), 'utf8');
+    const headings = parseOutlineHeadings(welcome);
+    assert.equal(
+      headings.some((h) => /demo|true|title:/i.test(h.text)),
+      false,
+    );
+    assert.equal(headings[0]?.text, 'Welcome to Atomic Markdown');
+    const invented = parseOutlineHeadings(['---', 'title: Welcome', 'demo: true', '---', '', '# Body'].join('\n'));
+    assert.deepEqual(
+      invented.map((h) => `${h.level}:${h.text}`),
+      ['1:Body'],
     );
   });
 
@@ -81,13 +101,14 @@ describe('parseOutlineHeadings', () => {
     assert.equal(parseAtxHeadingLine('#')?.text, '');
   });
 
-  it('collapses the outline panel on a narrow editor width', () => {
+  it('keeps a reopenable overlay outline on a narrow editor width', () => {
     assert.equal(outlineAutoCollapsed(900), false);
     assert.equal(outlineAutoCollapsed(641), false);
     assert.equal(outlineAutoCollapsed(640), true);
-    assert.equal(outlineAutoCollapsed(300), true);
+    assert.equal(outlineUsesOverlay(500), true);
+    assert.equal(outlineUsesOverlay(800), false);
     assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 800 }), true);
-    assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 500 }), false);
+    assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 500 }), true);
     assert.equal(outlinePanelShouldRender({ enabled: true, open: false, editorWidthPx: 800 }), false);
   });
 });
@@ -95,11 +116,11 @@ describe('parseOutlineHeadings', () => {
 describe('outline panel CSS', () => {
   const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'theme.css'), 'utf8');
 
-  it('does not pin a crushing 11rem minimum and hides the rail when narrow', () => {
+  it('does not pin a crushing 11rem minimum and uses a drawer instead of display:none', () => {
     assert.equal(/min-width:\s*11rem/.test(css), false);
     assert.match(css, /min-width:\s*0/);
-    assert.match(css, /@container atomic-editor \(max-width: 640px\)/);
-    assert.match(css, /@media \(max-width: 640px\)/);
+    assert.match(css, /\.editor-shell\.outline-overlay \.outline-panel/);
+    assert.equal(/display:\s*none/.test(css), false);
   });
 
   it('styles the empty state and the live current-heading mark', () => {

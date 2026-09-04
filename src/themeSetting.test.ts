@@ -40,6 +40,8 @@ describe('toggle and html class', () => {
   it('stamps theme-plannotator and optional light on <html>', () => {
     assert.equal(htmlThemeClass('dark'), 'theme-plannotator');
     assert.equal(htmlThemeClass('light'), 'theme-plannotator light');
+    assert.equal(htmlThemeClass('dark', true), 'theme-plannotator theme-follow');
+    assert.equal(htmlThemeClass('light', true), 'theme-plannotator theme-follow light');
   });
 
   it('writes workspace settings when a folder is open, else global', () => {

@@ -1,5 +1,6 @@
 import type { FormatAction } from '../src/protocol.ts';
 import type { FormatActiveMap } from './formatActive.ts';
+import { formatActionTitle, outlineToggleTitle } from './toolbarLabels.ts';
 
 const ACTIONS: Array<{ action: FormatAction; label: string; icon: string }> = [
   {
@@ -63,6 +64,7 @@ function ToolbarIcon({ svg }: { svg: string }) {
 
 export function Toolbar(props: {
   readOnly: boolean;
+  showFormats: boolean;
   outlineOpen: boolean;
   outlineEnabled: boolean;
   formatActive?: FormatActiveMap;
@@ -70,36 +72,41 @@ export function Toolbar(props: {
   onToggleOutline: () => void;
 }) {
   const active = props.formatActive ?? {};
+  const platform = typeof navigator === 'undefined' ? '' : navigator.platform;
+  const outlineLabel = outlineToggleTitle(props.outlineOpen);
   return (
-    <div className="atomic-toolbar" role="toolbar" aria-label="Markdown formatting">
-      {ACTIONS.map((item) => (
+    <div className="atomic-toolbar" role="toolbar" aria-label={props.showFormats ? 'Markdown formatting' : 'Document'}>
+      {props.showFormats
+        ? ACTIONS.map((item) => {
+            const title = formatActionTitle(item.action, platform);
+            return (
+              <button
+                key={item.action}
+                type="button"
+                className="atomic-toolbar-btn"
+                aria-label={title}
+                title={title}
+                aria-pressed={Boolean(active[item.action])}
+                disabled={props.readOnly}
+                onClick={() => props.onFormat(item.action)}
+              >
+                <ToolbarIcon svg={item.icon} />
+              </button>
+            );
+          })
+        : null}
+      {props.showFormats && props.outlineEnabled ? <span className="atomic-toolbar-sep" aria-hidden="true" /> : null}
+      {props.outlineEnabled ? (
         <button
-          key={item.action}
           type="button"
           className="atomic-toolbar-btn"
-          aria-label={item.label}
-          title={item.label}
-          aria-pressed={Boolean(active[item.action])}
-          disabled={props.readOnly}
-          onClick={() => props.onFormat(item.action)}
+          aria-label={outlineLabel}
+          title={outlineLabel}
+          aria-pressed={props.outlineOpen}
+          onClick={props.onToggleOutline}
         >
-          <ToolbarIcon svg={item.icon} />
+          <ToolbarIcon svg={OUTLINE_ICON} />
         </button>
-      ))}
-      {props.outlineEnabled ? (
-        <>
-          <span className="atomic-toolbar-sep" aria-hidden="true" />
-          <button
-            type="button"
-            className="atomic-toolbar-btn"
-            aria-label={props.outlineOpen ? 'Hide outline' : 'Show outline'}
-            title="Outline"
-            aria-pressed={props.outlineOpen}
-            onClick={props.onToggleOutline}
-          >
-            <ToolbarIcon svg={OUTLINE_ICON} />
-          </button>
-        </>
       ) : null}
     </div>
   );

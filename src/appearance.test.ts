@@ -50,4 +50,10 @@ describe('appearance clamps', () => {
     assert.equal(appearance.toolbarEnabled, false);
     assert.equal(appearance.outlineEnabled, true);
   });
+
+  it('defaults the formatting toolbar off', () => {
+    const appearance = appearanceFromConfig(() => undefined, 'followVscode');
+    assert.equal(appearance.toolbarEnabled, false);
+    assert.equal(appearance.outlineEnabled, true);
+  });
 });

@@ -10,24 +10,36 @@ export interface OutlineNode extends OutlineHeading {
 }
 
 /**
- * ATX `#`–`######` plus cheap setext H1/H2. Fenced code (backtick or tilde)
- * is skipped so a `#` inside a fence is not a heading.
+ * ATX `#`–`######` plus cheap setext H1 / short-dash H2.
+ * YAML frontmatter and thematic-break `---` are not headings.
+ * Fenced code (backtick or tilde) is skipped so a `#` inside a fence is not a heading.
  */
 export function parseOutlineHeadings(markdown: string): OutlineHeading[] {
   const headings: OutlineHeading[] = [];
-  let offset = 0;
-  let lineNumber = 1;
-  let fence: string | undefined;
   const lines = splitLines(markdown);
+  let i = 0;
+  let lineNumber = 1;
 
-  for (let i = 0; i < lines.length; i++) {
-    const { text, from, to } = lines[i];
-    void to;
+  if (lines[0] && isYamlFrontmatterFence(lines[0].text)) {
+    i = 1;
+    lineNumber = 2;
+    while (i < lines.length) {
+      const closer = isYamlFrontmatterFence(lines[i].text) || isYamlFrontmatterEnd(lines[i].text);
+      i += 1;
+      lineNumber += 1;
+      if (closer) {
+        break;
+      }
+    }
+  }
+
+  let fence: string | undefined;
+  for (; i < lines.length; i++) {
+    const { text, from } = lines[i];
     if (fence) {
       if (isFenceClose(text, fence)) {
         fence = undefined;
       }
-      offset = i + 1 < lines.length ? lines[i + 1].from : markdown.length;
       lineNumber += 1;
       continue;
     }
@@ -52,29 +64,52 @@ export function parseOutlineHeadings(markdown: string): OutlineHeading[] {
     }
 
     const next = lines[i + 1];
-    if (next && text.trim().length > 0 && !text.startsWith(' ')) {
-      if (/^=+\s*$/.test(next.text)) {
+    if (next && canBeSetextText(text)) {
+      if (isSetextH1Underline(next.text)) {
         headings.push({ level: 1, text: text.trim(), from, line: lineNumber });
-        lineNumber += 1;
+        lineNumber += 2;
         i += 1;
-        lineNumber += 1;
         continue;
       }
-      if (/^-{3,}\s*$/.test(next.text)) {
+      if (isSetextH2Underline(next.text)) {
         headings.push({ level: 2, text: text.trim(), from, line: lineNumber });
-        lineNumber += 1;
+        lineNumber += 2;
         i += 1;
-        lineNumber += 1;
         continue;
       }
     }
 
     lineNumber += 1;
-    offset = from;
-    void offset;
   }
 
   return headings;
+}
+
+/** Opening/closing YAML fence used by Jekyll-style frontmatter. */
+export function isYamlFrontmatterFence(line: string): boolean {
+  return /^---\s*$/.test(line);
+}
+
+export function isYamlFrontmatterEnd(line: string): boolean {
+  return /^\.\.\.\s*$/.test(line);
+}
+
+/** CommonMark thematic break — not a setext underline. */
+export function isThematicBreak(line: string): boolean {
+  return /^ {0,3}(?:(?:- *){3,}|(?:\* *){3,}|(?:_ *){3,})\s*$/.test(line);
+}
+
+export function isSetextH1Underline(line: string): boolean {
+  return /^ {0,3}=+\s*$/.test(line);
+}
+
+/** One or two dashes only. Three or more is a thematic break (`---`). */
+export function isSetextH2Underline(line: string): boolean {
+  return /^ {0,3}-{1,2}\s*$/.test(line) && !isThematicBreak(line);
+}
+
+function canBeSetextText(text: string): boolean {
+  return text.trim().length > 0 && !text.startsWith(' ') && !isThematicBreak(text);
 }
 
 /**
@@ -177,11 +212,16 @@ export function defaultOutlineOpen(enabled: boolean, wideEditor: boolean): boole
   return enabled && wideEditor;
 }
 
-/** Hide the outline below this editor-shell width so a 11rem rail cannot crush the surface. */
+/** Below this width the outline becomes an overlay drawer instead of a side rail. */
 export const OUTLINE_COLLAPSE_MAX_PX = 640;
 
 export function outlineAutoCollapsed(editorWidthPx: number): boolean {
   return editorWidthPx <= OUTLINE_COLLAPSE_MAX_PX;
+}
+
+/** Narrow shell: keep TOC as a drawer the user can reopen — never a dead toggle. */
+export function outlineUsesOverlay(editorWidthPx: number): boolean {
+  return outlineAutoCollapsed(editorWidthPx);
 }
 
 export function outlinePanelShouldRender(input: {
@@ -189,5 +229,5 @@ export function outlinePanelShouldRender(input: {
   open: boolean;
   editorWidthPx: number;
 }): boolean {
-  return input.enabled && input.open && !outlineAutoCollapsed(input.editorWidthPx);
+  return input.enabled && input.open;
 }

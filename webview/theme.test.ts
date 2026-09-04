@@ -33,14 +33,16 @@ describe('applyPaletteToRoot', () => {
       dataset: {} as { theme?: string },
     };
 
-    applyPaletteToRoot(root, 'dark');
+    applyPaletteToRoot(root, 'dark', true);
     assert.equal(classes.has('theme-plannotator'), true);
+    assert.equal(classes.has('theme-follow'), true);
     assert.equal(classes.has('light'), false);
     assert.equal(root.dataset.theme, 'dark');
 
-    applyPaletteToRoot(root, 'light');
+    applyPaletteToRoot(root, 'light', false);
     assert.equal(classes.has('theme-plannotator'), true);
     assert.equal(classes.has('light'), true);
+    assert.equal(classes.has('theme-follow'), false);
     assert.equal(root.dataset.theme, 'light');
   });
 });

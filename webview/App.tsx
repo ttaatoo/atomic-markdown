@@ -14,13 +14,15 @@ import { CODE_LANGUAGES } from './languages';
 import { OutlinePanel } from './OutlinePanel';
 import {
   defaultOutlineOpen,
-  outlineAutoCollapsed,
   outlineDebounceMs,
   outlinePanelShouldRender,
   outlineTreeFromMarkdown,
+  outlineUsesOverlay,
   parseOutlineHeadings,
   type OutlineNode,
 } from './outline';
+import { hostFailureNotice } from './notices';
+import { formatStripTitle } from './toolbarLabels';
 import { headingAtScrollPosition, visibleTopDocPos } from './outlineActive';
 import { fileToBase64, imageFilesFromDataTransfer, inferImageMime, nextImageRequestId } from './pasteImages';
 import {
@@ -50,9 +52,11 @@ export function App() {
   const editorHandleRef = useRef<AtomicCodeMirrorEditorHandle | null>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const [readOnly, setReadOnly] = useState(false);
-  const [toolbarEnabled, setToolbarEnabled] = useState(true);
+  const [toolbarEnabled, setToolbarEnabled] = useState(false);
+  const [formatStripOpen, setFormatStripOpen] = useState(false);
   const [outlineEnabled, setOutlineEnabled] = useState(true);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [notice, setNotice] = useState<string | undefined>();
   const [outlineNodes, setOutlineNodes] = useState<OutlineNode[]>([]);
   const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
   const [formatActive, setFormatActive] = useState<FormatActiveMap>({});
@@ -170,22 +174,19 @@ export function App() {
           break;
         case 'toggleOutline':
           if (outlineEnabledRef.current) {
-            setOutlineOpen((open) => {
-              if (!open && outlineAutoCollapsed(shellWidthRef.current)) {
-                return false;
-              }
-              return !open;
-            });
+            setOutlineOpen((open) => !open);
           }
           break;
         case 'imageSaved':
           pendingImages.current.delete(message.requestId);
+          setNotice(undefined);
           if (!readOnlyRef.current) {
             insertSnippetAtSelection(message.markdown);
           }
           break;
         case 'imageSaveFailed':
           pendingImages.current.delete(message.requestId);
+          setNotice(hostFailureNotice(message.message));
           break;
       }
     };
@@ -236,9 +237,6 @@ export function App() {
       }
       shellWidthRef.current = width;
       setShellWidth(width);
-      if (outlineAutoCollapsed(width)) {
-        setOutlineOpen(false);
-      }
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -331,7 +329,7 @@ export function App() {
             base64,
           });
         } catch {
-          // Host shows errors for save failures; a read error is silent so clipboard stays intact.
+          setNotice(hostFailureNotice("Couldn't read that image from the clipboard."));
         }
       }
     };
@@ -405,12 +403,7 @@ export function App() {
   }, []);
 
   const onToggleOutline = useCallback(() => {
-    setOutlineOpen((open) => {
-      if (!open && outlineAutoCollapsed(shellWidthRef.current)) {
-        return false;
-      }
-      return !open;
-    });
+    setOutlineOpen((open) => !open);
   }, []);
 
   const onOutlineSelect = useCallback(
@@ -429,19 +422,44 @@ export function App() {
     open: outlineOpen,
     editorWidthPx: shellWidth,
   });
+  const outlineOverlay = showOutline && outlineUsesOverlay(shellWidth);
+  const showFormats = !readOnly && (toolbarEnabled || formatStripOpen);
+  const showChrome = readOnly || outlineEnabled || !readOnly;
+  const chromeQuiet = !readOnly && !toolbarEnabled && !formatStripOpen;
 
   return (
     <div className={`app${readOnly ? ' app-reading' : ''}`}>
-      {readOnly || toolbarEnabled ? (
-        <div className="atomic-chrome">
+      {notice ? (
+        <div className="atomic-notice" role="alert">
+          <p className="atomic-notice-text">{notice}</p>
+          <button type="button" className="atomic-notice-dismiss" onClick={() => setNotice(undefined)}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {showChrome ? (
+        <div className={`atomic-chrome${chromeQuiet ? ' atomic-chrome-quiet' : ''}`}>
           {readOnly ? (
             <div className="atomic-reading-chip" role="status">
               Reading
             </div>
           ) : null}
-          {toolbarEnabled ? (
+          {!readOnly && !toolbarEnabled ? (
+            <button
+              type="button"
+              className="atomic-toolbar-btn atomic-format-toggle"
+              aria-expanded={formatStripOpen}
+              aria-label={formatStripTitle(formatStripOpen)}
+              title={formatStripTitle(formatStripOpen)}
+              onClick={() => setFormatStripOpen((open) => !open)}
+            >
+              Format
+            </button>
+          ) : null}
+          {outlineEnabled || showFormats ? (
             <Toolbar
               readOnly={readOnly}
+              showFormats={showFormats}
               outlineOpen={showOutline}
               outlineEnabled={outlineEnabled}
               formatActive={formatActive}
@@ -451,9 +469,22 @@ export function App() {
           ) : null}
         </div>
       ) : null}
-      <div className="editor-shell" ref={shellRef}>
+      <div className={`editor-shell${outlineOverlay ? ' outline-overlay' : ''}`} ref={shellRef}>
+        {outlineOverlay ? (
+          <button
+            type="button"
+            className="outline-backdrop"
+            aria-label="Close outline"
+            onClick={() => setOutlineOpen(false)}
+          />
+        ) : null}
         {showOutline ? (
-          <OutlinePanel nodes={outlineNodes} activeFrom={activeHeadingFrom} onSelect={onOutlineSelect} />
+          <OutlinePanel
+            nodes={outlineNodes}
+            activeFrom={activeHeadingFrom}
+            overlay={outlineOverlay}
+            onSelect={onOutlineSelect}
+          />
         ) : null}
         <AtomicCodeMirrorEditor
           documentId={session.uri}

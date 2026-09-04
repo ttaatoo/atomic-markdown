@@ -108,6 +108,15 @@ export function untitledImageError(): string {
   return 'Save the Markdown file first to paste or drop images. Clipboard contents were not changed.';
 }
 
+export function imageWriteFailedMessage(directory: string): string {
+  const folder = directory.replace(/\/+$/, '') || 'assets';
+  return `Couldn't save image to ${folder}/. Check folder permissions.`;
+}
+
+export function imageReadFailedMessage(): string {
+  return "Couldn't read that image. Try pasting or dropping it again.";
+}
+
 export function altFromBasename(filename: string): string {
   return filename.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim() || 'image';
 }

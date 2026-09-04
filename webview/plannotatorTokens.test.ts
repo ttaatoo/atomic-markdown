@@ -49,7 +49,7 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(mapping, /--atomic-editor-body-size: var\(--atomic-user-size, 17px\);/);
     assert.match(mapping, /--atomic-editor-body-leading: var\(--atomic-user-leading, 1\.7\);/);
     assert.match(mapping, /--atomic-editor-body-measure: var\(--atomic-user-measure, 70ch\);/);
-    assert.match(mapping, /--atomic-editor-search-bg: color-mix\(in oklch, var\(--primary\) 28%, transparent\);/);
+    assert.match(mapping, /--atomic-editor-search-bg: color-mix\(in oklch, var\(--primary\) 16%, transparent\);/);
     assert.equal(mapping.includes('--vscode-editor-'), false);
   });
 
@@ -57,7 +57,7 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(css, /\.cm-line\.cm-atomic-h1 \{/);
     assert.match(css, /font-size: 1\.75em;/);
     assert.match(css, /\.cm-line\.cm-atomic-blockquote \{/);
-    assert.match(css, /border-left: 2px solid color-mix\(in oklab, var\(--primary\) 50%, transparent\);/);
+    assert.match(css, /background: color-mix\(in oklch, var\(--muted\) 62%, transparent\);/);
     assert.match(css, /\.cm-line\.cm-atomic-fenced-code \{/);
     assert.match(css, /font-size: 0\.8125rem;/);
     assert.match(css, /padding-left: 1rem;/);
@@ -74,9 +74,13 @@ describe('Plannotator tokens in theme.css', () => {
 
   it('restyles outline, toolbar, and reading chip in the same language', () => {
     assert.match(css, /\.outline-panel \{[\s\S]*background: var\(--card/);
-    assert.match(css, /\.outline-item-active \{[\s\S]*box-shadow: inset 2px 0 0 var\(--primary/);
+    assert.match(css, /\.outline-item-active \{[\s\S]*background: color-mix\(in oklch, var\(--primary/);
+    assert.equal(css.includes('box-shadow: inset 2px 0 0 var(--primary'), false);
     assert.match(css, /\.atomic-reading-chip \{[\s\S]*border-radius: 999px;/);
-    assert.match(css, /\.atomic-toolbar-btn \{[\s\S]*transition: background 160ms ease/);
-    assert.match(css, /\.outline-item \{[\s\S]*transition: background 160ms ease/);
+    assert.equal(/\.atomic-reading-chip \{[^}]*text-transform:\s*uppercase/.test(css), false);
+    assert.match(css, /\.atomic-toolbar-btn \{[\s\S]*min-height: 2rem;/);
+    assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+    assert.match(css, /html\.theme-plannotator\.theme-follow \{/);
+    assert.match(css, /--primary: oklch\(0\.72 0\.08 280\);/);
   });
 });

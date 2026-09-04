@@ -71,12 +71,12 @@
             "light"
           ],
           "enumDescriptions": [
-            "Use Plannotator dark or light to match the workbench kind (not VS Code editor colors).",
+            "Match the workbench kind and borrow editor/sidebar neutrals (restrained accent).",
             "Plannotator default dark palette.",
             "Plannotator default light palette."
           ],
           "default": "followVscode",
-          "description": "Writing-surface palette. Always Plannotator's default dark/light oklch tokens. followVscode only chooses which of those two palettes matches the current workbench."
+          "description": "Writing-surface palette. followVscode uses workbench neutrals plus a quiet accent. dark/light use Plannotator paper. Accent chroma stays restrained."
         },
         "atomicMarkdown.fontFamily": {
           "type": "string",
@@ -106,8 +106,8 @@
         },
         "atomicMarkdown.toolbar.enabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Show the compact formatting toolbar above the editor."
+          "default": false,
+          "description": "Always show the formatting toolbar. Off (default) keeps a single Format control; shortcuts still work."
         },
         "atomicMarkdown.outline.enabled": {
           "type": "boolean",

@@ -13,7 +13,7 @@ export const APPEARANCE_DEFAULTS = {
   fontSize: 17,
   lineHeight: 1.7,
   contentWidthCh: 70,
-  toolbarEnabled: true,
+  toolbarEnabled: false,
   outlineEnabled: true,
 } as const;
 
