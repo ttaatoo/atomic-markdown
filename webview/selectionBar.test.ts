@@ -4,6 +4,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  SAFE_DEFAULT_ANCHOR,
+  anchorFromDomPositions,
+  contentDefaultAnchor,
+  domSelectionAnchor,
   editorInteractionActive,
   isSelectionRefreshKey,
   placeSelectionBar,
@@ -11,79 +15,83 @@ import {
   resolveSelectionAnchors,
   SELECTION_FORMAT_ACTIONS,
   selectionBarFromCoords,
+  selectionBarFromSources,
+  selectionLayerAnchor,
   shouldShowSelectionBar,
+  type SelectionAnchor,
+  type SelectionBarFlags,
 } from './selectionBar.ts';
 
+const showFlags: SelectionBarFlags = {
+  readOnly: false,
+  selectionEmpty: false,
+  focusOnForeignChrome: false,
+};
+
+const viewport = { width: 800, height: 600 };
+const barSize = { width: 176, height: 32 };
+
+function layerRoot(rects: SelectionAnchor[]) {
+  const nodes = rects.map((r) => ({
+    getClientRects: () => [r],
+    getBoundingClientRect: () => r,
+  }));
+  return {
+    querySelectorAll(selector: string) {
+      assert.match(selector, /cm-selectionBackground/);
+      return nodes;
+    },
+  };
+}
+
+function collapsedDomSelection() {
+  return {
+    rangeCount: 1,
+    isCollapsed: true,
+    getRangeAt() {
+      throw new Error('collapsed window.getSelection must not be used as an anchor');
+    },
+  };
+}
+
 describe('shouldShowSelectionBar', () => {
-  it('shows when the editor DOM is active even if hasFocus flickered false', () => {
+  it('shows a non-empty edit selection even when hasFocus is false and activeElement is BODY', () => {
+    const flicker = editorInteractionActive({
+      hasFocus: false,
+      pointerOnBar: false,
+      activeInsideEditor: false,
+      activeInsideBar: false,
+      activeNodeName: 'BODY',
+    });
+    assert.equal(flicker, true);
     assert.equal(
       shouldShowSelectionBar({
         readOnly: false,
         selectionEmpty: false,
-        editorFocused: false,
-        pointerOnBar: false,
-        editorDomActive: true,
-      }),
-      true,
-    );
-    assert.equal(
-      shouldShowSelectionBar({
-        readOnly: false,
-        selectionEmpty: false,
-        editorFocused: true,
-        pointerOnBar: false,
-        editorDomActive: false,
+        focusOnForeignChrome: !flicker,
       }),
       true,
     );
   });
 
-  it('hides in reading mode, when the selection collapses, or when focus left the editor', () => {
+  it('hides in reading mode, when the selection is empty, or when focus is on foreign chrome', () => {
     assert.equal(
-      shouldShowSelectionBar({
-        readOnly: true,
-        selectionEmpty: false,
-        editorFocused: true,
-        pointerOnBar: false,
-        editorDomActive: true,
-      }),
+      shouldShowSelectionBar({ readOnly: true, selectionEmpty: false, focusOnForeignChrome: false }),
       false,
     );
     assert.equal(
-      shouldShowSelectionBar({
-        readOnly: false,
-        selectionEmpty: true,
-        editorFocused: true,
-        pointerOnBar: false,
-        editorDomActive: true,
-      }),
+      shouldShowSelectionBar({ readOnly: false, selectionEmpty: true, focusOnForeignChrome: false }),
       false,
     );
     assert.equal(
-      shouldShowSelectionBar({
-        readOnly: false,
-        selectionEmpty: false,
-        editorFocused: false,
-        pointerOnBar: false,
-        editorDomActive: false,
-      }),
+      shouldShowSelectionBar({ readOnly: false, selectionEmpty: false, focusOnForeignChrome: true }),
       false,
-    );
-    assert.equal(
-      shouldShowSelectionBar({
-        readOnly: false,
-        selectionEmpty: false,
-        editorFocused: false,
-        pointerOnBar: true,
-        editorDomActive: false,
-      }),
-      true,
     );
   });
 });
 
 describe('editorInteractionActive', () => {
-  it('keeps the bar through body/html focus flicker and real editor/bar focus', () => {
+  it('treats body/html/null as flicker and outline buttons as a real leave', () => {
     assert.equal(
       editorInteractionActive({
         hasFocus: false,
@@ -127,7 +135,7 @@ describe('editorInteractionActive', () => {
   });
 });
 
-describe('readCoordsAtPos and DOM fallback', () => {
+describe('readCoordsAtPos', () => {
   it('tries the preferred side, then the opposite, then the unbiased call', () => {
     const calls: Array<number | undefined> = [];
     const coords = readCoordsAtPos((pos, side) => {
@@ -144,30 +152,103 @@ describe('readCoordsAtPos and DOM fallback', () => {
     assert.deepEqual(coords, { top: 10, bottom: 20, left: 4, right: 40 });
   });
 
-  it('uses a DOM range when both CM coords are null', () => {
-    const fallback = { top: 40, bottom: 56, left: 80, right: 160 };
-    const box = selectionBarFromCoords(
-      {
-        readOnly: false,
-        selectionEmpty: false,
-        editorFocused: false,
-        pointerOnBar: false,
-        editorDomActive: true,
-      },
+  it('swallows coordsAtPos throws so they never escape', () => {
+    assert.equal(
+      readCoordsAtPos(() => {
+        throw new Error('coordsAtPos boom');
+      }, 10, 1),
       null,
-      null,
-      { width: 800, height: 600 },
-      { width: 176, height: 32 },
-      fallback,
     );
-    assert.deepEqual(box, placeSelectionBar(fallback, { width: 800, height: 600 }, { width: 176, height: 32 }));
+    assert.equal(
+      readCoordsAtPos((_pos, side) => {
+        if (side === 1) {
+          throw new Error('preferred side');
+        }
+        return null;
+      }, 10, 1),
+      null,
+    );
+  });
+});
+
+describe('drawSelection / collapsed DOM placement', () => {
+  it('places from .cm-selectionBackground when CM coords and window.getSelection are unusable', () => {
+    const painted = { top: 120, bottom: 140, left: 80, right: 200 };
+    const layer = selectionLayerAnchor(layerRoot([painted]));
+    assert.deepEqual(layer, painted);
+
+    const windowSel = domSelectionAnchor(collapsedDomSelection(), { contains: () => true });
+    assert.equal(windowSel, null);
+
+    const box = selectionBarFromSources({
+      flags: showFlags,
+      start: null,
+      end: null,
+      fallbacks: [layer, null, windowSel, null],
+      viewport,
+      bar: barSize,
+    });
+    assert.ok(box);
+    assert.deepEqual(box, placeSelectionBar(painted, viewport, barSize));
   });
 
-  it('resolves mixed CM + DOM anchors', () => {
+  it('unions selection-layer children and ignores collapsed DOM ranges', () => {
+    const layer = selectionLayerAnchor(
+      layerRoot([
+        { top: 100, bottom: 118, left: 40, right: 90 },
+        { top: 118, bottom: 136, left: 20, right: 160 },
+      ]),
+    );
+    assert.deepEqual(layer, { top: 100, bottom: 136, left: 20, right: 160 });
+  });
+
+  it('builds an anchor from domAtPos Range rects', () => {
+    const start = { node: {} as Node, offset: 0 };
+    const end = { node: {} as Node, offset: 4 };
+    const box = anchorFromDomPositions(start, end, () => ({
+      setStart() {},
+      setEnd() {},
+      getBoundingClientRect: () => ({ top: 40, bottom: 56, left: 80, right: 160 }) as DOMRect,
+      getClientRects: () => [],
+    }));
+    assert.deepEqual(box, { top: 40, bottom: 56, left: 80, right: 160 });
+  });
+
+  it('still mounts a safe default when every coord source is null', () => {
+    const box = selectionBarFromSources({
+      flags: showFlags,
+      start: null,
+      end: null,
+      fallbacks: [null, null, null],
+      viewport,
+      bar: barSize,
+    });
+    assert.ok(box);
+    assert.deepEqual(box, placeSelectionBar(SAFE_DEFAULT_ANCHOR, viewport, barSize));
+  });
+
+  it('uses a contentDOM top-center band before the hard-coded default', () => {
+    const content = contentDefaultAnchor({ top: 80, bottom: 400, left: 100, right: 500 });
+    assert.ok(content);
+    const box = selectionBarFromSources({
+      flags: showFlags,
+      start: null,
+      end: null,
+      fallbacks: [null, null, content],
+      viewport,
+      bar: barSize,
+    });
+    assert.deepEqual(box, placeSelectionBar(content, viewport, barSize));
+  });
+
+  it('resolves mixed CM + fallback anchors', () => {
     const start = { top: 10, bottom: 20, left: 10, right: 20 };
-    const dom = { top: 10, bottom: 24, left: 10, right: 80 };
-    assert.deepEqual(resolveSelectionAnchors({ start, end: null, domFallback: dom }), { start, end: dom });
-    assert.equal(resolveSelectionAnchors({ start: null, end: null, domFallback: null }), null);
+    const painted = { top: 10, bottom: 24, left: 10, right: 80 };
+    assert.deepEqual(resolveSelectionAnchors({ start, end: null, fallbacks: [painted] }), {
+      start,
+      end: painted,
+    });
+    assert.equal(resolveSelectionAnchors({ start: null, end: null, fallbacks: [null] }), null);
   });
 });
 
@@ -175,8 +256,8 @@ describe('placeSelectionBar', () => {
   it('sits above the selection and clamps to the viewport', () => {
     const above = placeSelectionBar(
       { top: 120, bottom: 140, left: 80, right: 200 },
-      { width: 800, height: 600 },
-      { width: 176, height: 32 },
+      viewport,
+      barSize,
     );
     assert.equal(above.top, 80);
     assert.equal(above.left, 52);
@@ -184,27 +265,22 @@ describe('placeSelectionBar', () => {
     const nearTop = placeSelectionBar(
       { top: 10, bottom: 28, left: 20, right: 80 },
       { width: 400, height: 300 },
-      { width: 176, height: 32 },
+      barSize,
     );
     assert.equal(nearTop.top, 36);
     assert.ok(nearTop.left >= 8);
     assert.ok(nearTop.left + 176 <= 400 - 8);
   });
 
-  it('returns null when the selection should not show a bar', () => {
+  it('returns null when the selection should not show a bar even if fallbacks exist', () => {
     assert.equal(
       selectionBarFromCoords(
-        {
-          readOnly: false,
-          selectionEmpty: true,
-          editorFocused: true,
-          pointerOnBar: false,
-          editorDomActive: true,
-        },
+        { readOnly: false, selectionEmpty: true, focusOnForeignChrome: false },
+        null,
+        null,
+        viewport,
+        barSize,
         { top: 10, bottom: 20, left: 10, right: 40 },
-        { top: 10, bottom: 20, left: 40, right: 80 },
-        { width: 400, height: 300 },
-        { width: 176, height: 32 },
       ),
       null,
     );
@@ -237,6 +313,11 @@ describe('no top chrome', () => {
     assert.match(app, /SelectionFormatBar/);
     assert.match(app, /selectionchange/);
     assert.match(app, /mouseup/);
+    assert.match(app, /selectionLayerAnchor/);
+    assert.match(app, /anchorFromDomPositions/);
+    assert.match(app, /contentDefaultAnchor/);
+    assert.match(app, /selectionBarFromSources/);
+    assert.match(app, /focusOnForeignChrome/);
     assert.equal(css.includes('.atomic-chrome'), false);
     assert.equal(css.includes('.atomic-reading-chip'), false);
     assert.match(css, /\.selection-format-bar/);

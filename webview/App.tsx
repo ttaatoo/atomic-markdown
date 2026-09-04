@@ -31,11 +31,14 @@ import { SelectionFormatBar } from './SelectionFormatBar';
 import {
   SELECTION_BAR_FALLBACK_HEIGHT,
   SELECTION_BAR_FALLBACK_WIDTH,
+  anchorFromDomPositions,
+  contentDefaultAnchor,
   domSelectionAnchor,
   editorInteractionActive,
   isSelectionRefreshKey,
   readCoordsAtPos,
-  selectionBarFromCoords,
+  selectionBarFromSources,
+  selectionLayerAnchor,
   type SelectionBarBox,
 } from './selectionBar';
 import {
@@ -311,7 +314,10 @@ export function App() {
     const syncSelectionBar = (current: {
       hasFocus: boolean;
       dom: Element;
+      scrollDOM?: Element;
+      contentDOM?: Element;
       coordsAtPos(pos: number, side?: -1 | 1): { top: number; bottom: number; left: number; right: number } | null;
+      domAtPos?(pos: number): { node: Node; offset: number };
       state: { selection: { main: { from: number; to: number; empty: boolean } }; doc: { toString(): string } };
     }) => {
       try {
@@ -331,23 +337,47 @@ export function App() {
           activeInsideBar: Boolean(barEl && active && barEl.contains(active)),
           activeNodeName: active?.nodeName ?? null,
         });
-        const next = selectionBarFromCoords(
-          {
+        let start: ReturnType<typeof readCoordsAtPos> = null;
+        let end: ReturnType<typeof readCoordsAtPos> = null;
+        try {
+          start = readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.from, 1);
+        } catch {
+          start = null;
+        }
+        try {
+          end = readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.to, -1);
+        } catch {
+          end = null;
+        }
+        let fromDom: ReturnType<typeof anchorFromDomPositions> = null;
+        try {
+          if (current.domAtPos) {
+            fromDom = anchorFromDomPositions(current.domAtPos(sel.from), current.domAtPos(sel.to), () =>
+              document.createRange(),
+            );
+          }
+        } catch {
+          fromDom = null;
+        }
+        const layer =
+          selectionLayerAnchor(current.scrollDOM ?? null) ?? selectionLayerAnchor(current.dom);
+        const windowSel = domSelectionAnchor(window.getSelection(), current.dom);
+        const contentDefault = contentDefaultAnchor(current.contentDOM?.getBoundingClientRect());
+        const next = selectionBarFromSources({
+          flags: {
             readOnly: readOnlyRef.current,
             selectionEmpty: sel.empty,
-            editorFocused: current.hasFocus,
-            pointerOnBar: pointerOnBarRef.current,
-            editorDomActive: editorOrBar,
+            focusOnForeignChrome: !editorOrBar,
           },
-          readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.from, 1),
-          readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.to, -1),
-          { width: window.innerWidth, height: window.innerHeight },
-          {
+          start,
+          end,
+          fallbacks: [layer, fromDom, windowSel, contentDefault],
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          bar: {
             width: barEl?.offsetWidth || SELECTION_BAR_FALLBACK_WIDTH,
             height: barEl?.offsetHeight || SELECTION_BAR_FALLBACK_HEIGHT,
           },
-          domSelectionAnchor(window.getSelection(), current.dom),
-        );
+        });
         setSelectionBar((prev) => {
           if (!next && !prev) {
             return prev;
@@ -358,7 +388,12 @@ export function App() {
           return next;
         });
       } catch {
-        // A coord/format failure must not take down the editor; keep the last bar.
+        // Last resort: still try to mount at the safe default if the selection is live.
+        const view = currentEditorView();
+        const sel = view?.state.selection.main;
+        if (view && sel && !sel.empty && !readOnlyRef.current) {
+          setSelectionBar((prev) => prev ?? { top: 48, left: 96 });
+        }
       }
     };
     const unsubUpdate = onEditorViewUpdate((current) => {
