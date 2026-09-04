@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { readOnlyExtension } from '@atomic-editor/editor';
 import { EditorState } from '@codemirror/state';
 import { showTooltip } from '@codemirror/view';
 import {
@@ -23,7 +22,7 @@ function stateWithSelection(opts?: { empty?: boolean; readOnly?: boolean }) {
   return EditorState.create({
     doc: PROSE,
     selection: empty ? { anchor: FROM } : { anchor: FROM, head: TO },
-    extensions: [selectionFormatTooltip(), opts?.readOnly ? readOnlyExtension(true) : []],
+    extensions: [selectionFormatTooltip(), opts?.readOnly ? EditorState.readOnly.of(true) : []],
   });
 }
 

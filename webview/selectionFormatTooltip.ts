@@ -1,17 +1,16 @@
-import { readOnlyFacet } from '@atomic-editor/editor';
 import { StateField, type EditorState, type Extension } from '@codemirror/state';
 import { showTooltip, tooltips, type Tooltip, type TooltipView, type EditorView } from '@codemirror/view';
-import type { FormatAction } from '../src/protocol';
-import { applyFormat } from './format';
-import { detectFormatActive, type FormatActiveMap } from './formatActive';
+import type { FormatAction } from '../src/protocol.ts';
+import { applyFormat } from './format.ts';
+import { detectFormatActive, type FormatActiveMap } from './formatActive.ts';
 import {
   SAFE_DEFAULT_ANCHOR,
   SELECTION_FORMAT_ACTIONS,
   contentDefaultAnchor,
   readCoordsAtPos,
   selectionLayerAnchor,
-} from './selectionBar';
-import { formatActionTitle } from './toolbarLabels';
+} from './selectionBar.ts';
+import { formatActionTitle } from './toolbarLabels.ts';
 
 const INLINE_ICONS: Partial<Record<FormatAction, string>> = {
   bold: '<path d="M5 4h6.2c2.3 0 3.8 1.4 3.8 3.3 0 1.4-.8 2.5-2.1 3 .9.3 2.6 1.3 2.6 3.2 0 2.2-1.7 3.5-4.2 3.5H5V4zm2.6 5.4h3.3c1 0 1.6-.6 1.6-1.4S11.9 6.6 10.9 6.6H7.6v2.8zm0 5.4h3.7c1.2 0 1.9-.6 1.9-1.6s-.7-1.6-1.9-1.6H7.6V14.8z"/>',
@@ -25,10 +24,7 @@ const INLINE_ICONS: Partial<Record<FormatAction, string>> = {
 
 /** Edit-mode non-empty CM selection — no React/activeElement heuristics. */
 export function shouldShowFormatTooltip(state: EditorState): boolean {
-  if (state.selection.main.empty) {
-    return false;
-  }
-  if (state.readOnly || state.facet(readOnlyFacet)) {
+  if (state.selection.main.empty || state.readOnly) {
     return false;
   }
   return true;
@@ -56,8 +52,7 @@ export const selectionFormatTooltipField = StateField.define<Tooltip | null>({
     if (
       !tr.docChanged &&
       !tr.selection &&
-      tr.startState.readOnly === tr.state.readOnly &&
-      tr.startState.facet(readOnlyFacet) === tr.state.facet(readOnlyFacet)
+      tr.startState.readOnly === tr.state.readOnly
     ) {
       return value;
     }
@@ -71,7 +66,7 @@ export function selectionFormatTooltip(): Extension {
 }
 
 export function dispatchSelectionFormat(view: EditorView, action: FormatAction): boolean {
-  if (view.state.readOnly || view.state.facet(readOnlyFacet)) {
+  if (view.state.readOnly) {
     return false;
   }
   const sel = view.state.selection.main;
