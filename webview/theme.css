@@ -453,7 +453,8 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 
 .selection-format-bar {
   position: fixed;
-  z-index: 6;
+  z-index: 50;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 2px;

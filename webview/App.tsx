@@ -31,6 +31,10 @@ import { SelectionFormatBar } from './SelectionFormatBar';
 import {
   SELECTION_BAR_FALLBACK_HEIGHT,
   SELECTION_BAR_FALLBACK_WIDTH,
+  domSelectionAnchor,
+  editorInteractionActive,
+  isSelectionRefreshKey,
+  readCoordsAtPos,
   selectionBarFromCoords,
   type SelectionBarBox,
 } from './selectionBar';
@@ -304,39 +308,58 @@ export function App() {
       const headingFrom = headingAtScrollPosition(headings, visibleTopDocPos(current));
       setActiveHeadingFrom((prev) => (prev === headingFrom ? prev : headingFrom));
     };
-    const syncSelectionBar = (current: Parameters<typeof visibleTopDocPos>[0] & {
+    const syncSelectionBar = (current: {
       hasFocus: boolean;
-      coordsAtPos(pos: number): { top: number; bottom: number; left: number; right: number } | null;
+      dom: Element;
+      coordsAtPos(pos: number, side?: -1 | 1): { top: number; bottom: number; left: number; right: number } | null;
       state: { selection: { main: { from: number; to: number; empty: boolean } }; doc: { toString(): string } };
     }) => {
-      const sel = current.state.selection.main;
-      const nextActive = detectFormatActive(current.state.doc.toString(), sel.from, sel.to);
-      setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
-      const barEl = selectionBarElRef.current;
-      const next = selectionBarFromCoords(
-        {
-          readOnly: readOnlyRef.current,
-          selectionEmpty: sel.empty,
-          editorFocused: current.hasFocus,
+      try {
+        const sel = current.state.selection.main;
+        try {
+          const nextActive = detectFormatActive(current.state.doc.toString(), sel.from, sel.to);
+          setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
+        } catch {
+          // Pressed-state detection must never block the bar.
+        }
+        const barEl = selectionBarElRef.current;
+        const active = document.activeElement;
+        const editorOrBar = editorInteractionActive({
+          hasFocus: current.hasFocus,
           pointerOnBar: pointerOnBarRef.current,
-        },
-        current.coordsAtPos(sel.from),
-        current.coordsAtPos(sel.to),
-        { width: window.innerWidth, height: window.innerHeight },
-        {
-          width: barEl?.offsetWidth || SELECTION_BAR_FALLBACK_WIDTH,
-          height: barEl?.offsetHeight || SELECTION_BAR_FALLBACK_HEIGHT,
-        },
-      );
-      setSelectionBar((prev) => {
-        if (!next && !prev) {
-          return prev;
-        }
-        if (next && prev && Math.abs(next.top - prev.top) < 0.5 && Math.abs(next.left - prev.left) < 0.5) {
-          return prev;
-        }
-        return next;
-      });
+          activeInsideEditor: Boolean(active && current.dom.contains(active)),
+          activeInsideBar: Boolean(barEl && active && barEl.contains(active)),
+          activeNodeName: active?.nodeName ?? null,
+        });
+        const next = selectionBarFromCoords(
+          {
+            readOnly: readOnlyRef.current,
+            selectionEmpty: sel.empty,
+            editorFocused: current.hasFocus,
+            pointerOnBar: pointerOnBarRef.current,
+            editorDomActive: editorOrBar,
+          },
+          readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.from, 1),
+          readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.to, -1),
+          { width: window.innerWidth, height: window.innerHeight },
+          {
+            width: barEl?.offsetWidth || SELECTION_BAR_FALLBACK_WIDTH,
+            height: barEl?.offsetHeight || SELECTION_BAR_FALLBACK_HEIGHT,
+          },
+          domSelectionAnchor(window.getSelection(), current.dom),
+        );
+        setSelectionBar((prev) => {
+          if (!next && !prev) {
+            return prev;
+          }
+          if (next && prev && Math.abs(next.top - prev.top) < 0.5 && Math.abs(next.left - prev.left) < 0.5) {
+            return prev;
+          }
+          return next;
+        });
+      } catch {
+        // A coord/format failure must not take down the editor; keep the last bar.
+      }
     };
     const unsubUpdate = onEditorViewUpdate((current) => {
       syncOutline(current);
@@ -346,27 +369,47 @@ export function App() {
       syncOutline(current);
       syncSelectionBar(current);
     });
-    const onResize = () => {
+    const refreshBar = () => {
       const current = currentEditorView();
       if (current) {
         syncSelectionBar(current);
       }
     };
-    const onFocusChange = () => {
-      const current = currentEditorView();
-      if (current) {
-        syncSelectionBar(current);
+    let selectionRaf = 0;
+    const refreshBarSoon = () => {
+      if (selectionRaf) {
+        return;
+      }
+      selectionRaf = window.requestAnimationFrame(() => {
+        selectionRaf = 0;
+        refreshBar();
+      });
+    };
+    const onMouseUp = () => refreshBarSoon();
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (isSelectionRefreshKey(event.key, event.shiftKey)) {
+        refreshBarSoon();
       }
     };
-    window.addEventListener('resize', onResize);
-    window.addEventListener('focusin', onFocusChange);
-    window.addEventListener('focusout', onFocusChange);
+    const onSelectionChange = () => refreshBarSoon();
+    window.addEventListener('resize', refreshBarSoon);
+    window.addEventListener('focusin', refreshBarSoon);
+    window.addEventListener('focusout', refreshBarSoon);
+    document.addEventListener('mouseup', onMouseUp, true);
+    document.addEventListener('keyup', onKeyUp, true);
+    document.addEventListener('selectionchange', onSelectionChange);
     return () => {
       unsubUpdate();
       unsubScroll();
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('focusin', onFocusChange);
-      window.removeEventListener('focusout', onFocusChange);
+      if (selectionRaf) {
+        window.cancelAnimationFrame(selectionRaf);
+      }
+      window.removeEventListener('resize', refreshBarSoon);
+      window.removeEventListener('focusin', refreshBarSoon);
+      window.removeEventListener('focusout', refreshBarSoon);
+      document.removeEventListener('mouseup', onMouseUp, true);
+      document.removeEventListener('keyup', onKeyUp, true);
+      document.removeEventListener('selectionchange', onSelectionChange);
     };
   }, [session]);
 
