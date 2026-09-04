@@ -42,6 +42,8 @@ npm run package
    - Explorer context menu on a `.md` file → **Open with Atomic Markdown**
    - Tab context → **Reopen Editor With…** → **Atomic Markdown**
 
+**Open with Atomic Markdown** replaces the current text-editor tab (or an already-open text tab for that file) instead of stacking a second same-named tab. **Reopen Editor With… → Text Editor** still works.
+
 The writing engine is [Atomic Editor](https://www.npmjs.com/package/@atomic-editor/editor) (`@atomic-editor/editor`) on CodeMirror 6. There is no vault, note graph, wiki `[[links]]`, Vim mode, collaboration, or AI chrome — just a single-file writing surface.
 
 `retainContextWhenHidden` keeps the editor mounted when you switch tabs so the CodeMirror view is not remounted on every hide. Closing the editor disposes listeners; opening it again starts a new session.
@@ -51,15 +53,15 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 ## Features (v0.1)
 
 - Inline live preview (syntax hides on inactive lines)
-- Compact formatting toolbar (hide with `atomicMarkdown.toolbar.enabled`) and shortcuts: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link (only while this custom editor is active)
-- Heading outline (目录结构) inside the webview — ATX `#`–`######` and setext H1/H2; view-only, never writes a `[TOC]` block
+- Compact formatting toolbar (hide with `atomicMarkdown.toolbar.enabled`) with SVG icons, pressed state for the current mark, and shortcuts: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link (only while this custom editor is active)
+- Heading outline (目录结构) inside the webview — ATX `#`–`######` and setext H1/H2; highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
 - Paste or drop png/jpeg/gif/webp/svg images; the extension host saves them under `atomicMarkdown.images.directory` (default `assets` next to the Markdown file) and inserts a relative `![]()` at the caret
 - WYSIWYG tables
 - Clickable task checkboxes (`- [ ]` / `- [x]`)
 - Fence highlighting for ~20 languages
-- Mermaid fenced blocks (`mermaid` info string) render as SVG (bundled; no CDN). Invalid syntax shows an inline error; the fence text on disk is unchanged and stays editable
-- Reading mode (editor title book icon, or **Atomic Markdown: Toggle Reading Mode**)
-- Find inside the editor (`Cmd/Ctrl+F`, or the title search icon)
+- Mermaid fenced blocks (`mermaid` info string) render as SVG (bundled; no CDN). Invalid syntax shows an inline error; the fence text on disk is unchanged and stays editable. Scrolling through diagrams must not blank the webview (see [docs/QA.md](docs/QA.md))
+- Reading mode (editor title book/pencil icons plus an in-webview **Reading** chip, or **Atomic Markdown: Toggle Reading Mode**)
+- Find inside the editor (`Cmd/Ctrl+F`, or the title search icon). **Escape** closes the find bar when it is focused
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is. `data:`, `javascript:`, and `file:` image URIs are rejected.
 - Plannotator default dark/light palettes plus typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) applied live without remounting
 
@@ -79,7 +81,7 @@ SVG files on disk are treated as untrusted image data: they are displayed with `
 
 ## Toolbar and shortcuts
 
-The toolbar is compact (markdown-ish labels, not a word processor). Set `atomicMarkdown.toolbar.enabled` to `false` to hide it. Formatting still works from the scoped keybindings above.
+The toolbar is compact (SVG icons, not a word processor). Set `atomicMarkdown.toolbar.enabled` to `false` to hide it. Formatting still works from the scoped keybindings above. Buttons show a pressed state when the caret is already in bold/italic/code/heading/list when that is cheap to detect.
 
 Actions wrap the selection (or a placeholder) and leave a sensible caret. Heading cycles none → H1 → H2 → H3 → none. List buttons toggle bullet, numbered, and task prefixes.
 
@@ -89,7 +91,7 @@ These shortcuts are scoped with `when: activeCustomEditorId == ttaatoo.atomicMar
 
 `atomicMarkdown.outline.enabled` (default `true`) allows a collapsible heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Toggle it from the editor title or the toolbar.
 
-Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The outline updates as you type (debounced on large documents). It never mutates the file.
+Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The current (or nearest above the viewport) heading stays highlighted while you scroll or edit. The outline updates as you type (debounced on large documents). It never mutates the file. A note with no headings shows a styled empty state. Below ~640px the rail hides so it cannot crush the editor.
 
 ## Theme and typography
 

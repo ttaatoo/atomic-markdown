@@ -7,7 +7,16 @@ import {
   planMermaidDecorationsFromFences,
   type MermaidTheme,
 } from './mermaidFences';
+import { mermaidErrorBoundary } from './mermaidIsolation';
 import { cachedMermaidResult, renderMermaidSvg, type MermaidRenderResult } from './mermaidRender';
+import {
+  mermaidDecorationsShouldRebuild,
+  mermaidDomAlreadyRendered,
+  mermaidFenceOccupancy,
+  mermaidWidgetReuseKey,
+  normalizeMermaidSvgElement,
+  shouldUpdateMermaidHeightCache,
+} from './mermaidStability';
 
 const mermaidThemeEffect = StateEffect.define<MermaidTheme>();
 
@@ -34,6 +43,7 @@ const mermaidThemeWatcher = ViewPlugin.fromClass(
       this.observer = new MutationObserver(() => {
         const theme = currentMermaidTheme();
         if (theme !== view.state.field(mermaidThemeField)) {
+          // Theme only — no dummy document change. Widgets remount via eq().
           view.dispatch({ effects: mermaidThemeEffect.of(theme) });
         }
       });
@@ -87,14 +97,23 @@ class MermaidWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
+    return mermaidErrorBoundary(
+      () => this.buildDom(view),
+      () => fallbackMermaidDom('Diagram failed to render'),
+    );
+  }
+
+  private buildDom(view: EditorView): HTMLElement {
     this.aborted = false;
     const wrap = document.createElement('div');
+    const key = mermaidWidgetReuseKey(this.source, this.theme, this.clickToEdit);
     wrap.className = this.clickToEdit
       ? 'cm-atomic-mermaid cm-atomic-mermaid-clickable'
       : 'cm-atomic-mermaid';
     wrap.setAttribute('contenteditable', 'false');
     wrap.setAttribute('role', 'img');
     wrap.setAttribute('aria-label', 'Mermaid diagram');
+    wrap.dataset.mermaidKey = key;
 
     const inner = document.createElement('div');
     inner.className = 'cm-atomic-mermaid-inner';
@@ -108,9 +127,15 @@ class MermaidWidget extends WidgetType {
       });
     }
 
+    if (mermaidDomAlreadyRendered(wrap.dataset, key)) {
+      return wrap;
+    }
+
     const cached = cachedMermaidResult(this.source, this.theme);
     if (cached) {
-      applyMermaidResult(wrap, inner, cached, view, this.source, this.theme);
+      applyMermaidResult(wrap, inner, cached, view, this.source, this.theme, {
+        measure: !heightCache.has(cacheKey(this.source, this.theme)),
+      });
     } else {
       inner.classList.add('cm-atomic-mermaid-pending');
       inner.textContent = 'Rendering diagram…';
@@ -150,8 +175,18 @@ class MermaidWidget extends WidgetType {
     if (this.aborted || gen !== this.renderGen || !wrap.isConnected) {
       return;
     }
-    applyMermaidResult(wrap, inner, result, view, this.source, this.theme);
+    applyMermaidResult(wrap, inner, result, view, this.source, this.theme, { measure: true });
   }
+}
+
+function fallbackMermaidDom(message: string): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'cm-atomic-mermaid';
+  const inner = document.createElement('div');
+  inner.className = 'cm-atomic-mermaid-inner';
+  showMermaidError(inner, message);
+  wrap.appendChild(inner);
+  return wrap;
 }
 
 function applyMermaidResult(
@@ -161,24 +196,58 @@ function applyMermaidResult(
   view: EditorView,
   source: string,
   theme: MermaidTheme,
+  options: { measure: boolean },
 ): void {
-  inner.classList.remove('cm-atomic-mermaid-pending');
-  inner.replaceChildren();
-  if (result.ok) {
-    const svg = svgFromMarkup(result.svg);
-    if (svg) {
-      inner.appendChild(svg);
-    } else {
+  mermaidErrorBoundary(
+    () => {
+      inner.classList.remove('cm-atomic-mermaid-pending');
+      inner.replaceChildren();
+      if (result.ok) {
+        const svg = svgFromMarkup(result.svg);
+        if (svg) {
+          normalizeMermaidSvgElement(svg);
+          inner.appendChild(svg);
+        } else {
+          showMermaidError(inner, 'Mermaid produced unreadable SVG');
+        }
+      } else {
+        showMermaidError(inner, result.error);
+      }
+      wrap.dataset.mermaidRendered = mermaidWidgetReuseKey(source, theme, true);
+      const key = cacheKey(source, theme);
+      if (!options.measure && heightCache.has(key)) {
+        return;
+      }
+      scheduleHeightMeasure(view, wrap, source, theme);
+    },
+    () => {
       showMermaidError(inner, 'Mermaid produced unreadable SVG');
+    },
+  );
+}
+
+function scheduleHeightMeasure(view: EditorView, wrap: HTMLElement, source: string, theme: MermaidTheme): void {
+  const key = cacheKey(source, theme);
+  const run = () => {
+    if (!wrap.isConnected) {
+      return;
     }
+    const height = wrap.getBoundingClientRect().height;
+    if (!shouldUpdateMermaidHeightCache(heightCache.get(key), height)) {
+      return;
+    }
+    heightCache.set(key, height);
+    try {
+      view.requestMeasure();
+    } catch {
+      // Never throw out of a mermaid widget into CM6 / React.
+    }
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(run);
   } else {
-    showMermaidError(inner, result.error);
+    setTimeout(run, 0);
   }
-  const height = wrap.getBoundingClientRect().height;
-  if (height > 0) {
-    heightCache.set(cacheKey(source, theme), height);
-  }
-  view.requestMeasure();
 }
 
 function showMermaidError(inner: HTMLElement, message: string): void {
@@ -228,33 +297,38 @@ function currentMermaidTheme(): MermaidTheme {
 }
 
 function mermaidDecorations(state: EditorState): DecorationSet {
-  const fences = findMermaidFenceRangesInDoc(state.doc);
-  const plans = planMermaidDecorationsFromFences(fences, {
-    readOnly: state.facet(readOnlyFacet),
-    ranges: state.selection.ranges,
-  });
-  const theme = state.field(mermaidThemeField);
-  const ranges = plans.map((plan) => {
-    const widget = new MermaidWidget({
-      source: plan.body,
-      theme,
-      clickToEdit: !state.facet(readOnlyFacet),
-      fenceFrom: plan.fenceFrom,
-    });
-    if (plan.kind === 'replace') {
-      return Decoration.replace({
-        widget,
-        block: true,
-        inclusive: true,
-      }).range(plan.fenceFrom, plan.fenceTo);
-    }
-    return Decoration.widget({
-      widget,
-      block: true,
-      side: 1,
-    }).range(plan.fenceTo);
-  });
-  return Decoration.set(ranges, true);
+  return mermaidErrorBoundary(
+    () => {
+      const fences = findMermaidFenceRangesInDoc(state.doc);
+      const plans = planMermaidDecorationsFromFences(fences, {
+        readOnly: state.facet(readOnlyFacet),
+        ranges: state.selection.ranges,
+      });
+      const theme = state.field(mermaidThemeField);
+      const ranges = plans.map((plan) => {
+        const widget = new MermaidWidget({
+          source: plan.body,
+          theme,
+          clickToEdit: !state.facet(readOnlyFacet),
+          fenceFrom: plan.fenceFrom,
+        });
+        if (plan.kind === 'replace') {
+          return Decoration.replace({
+            widget,
+            block: true,
+            inclusive: true,
+          }).range(plan.fenceFrom, plan.fenceTo);
+        }
+        return Decoration.widget({
+          widget,
+          block: true,
+          side: 1,
+        }).range(plan.fenceTo);
+      });
+      return Decoration.set(ranges, true);
+    },
+    () => Decoration.none,
+  );
 }
 
 const mermaidBlocksField = StateField.define<DecorationSet>({
@@ -263,7 +337,25 @@ const mermaidBlocksField = StateField.define<DecorationSet>({
     const themeChanged = tr.effects.some((effect) => effect.is(mermaidThemeEffect));
     const readOnlyChanged =
       tr.startState.facet(readOnlyFacet) !== tr.state.facet(readOnlyFacet);
-    if (!tr.docChanged && !tr.selection && !themeChanged && !readOnlyChanged) {
+    const nextFences = findMermaidFenceRangesInDoc(tr.state.doc);
+    const occupancy = mermaidFenceOccupancy(
+      nextFences,
+      tr.state.selection.ranges,
+      tr.state.facet(readOnlyFacet),
+    );
+    const prevOccupancy = mermaidFenceOccupancy(
+      findMermaidFenceRangesInDoc(tr.startState.doc),
+      tr.startState.selection.ranges,
+      tr.startState.facet(readOnlyFacet),
+    );
+    if (
+      !mermaidDecorationsShouldRebuild({
+        docChanged: tr.docChanged,
+        themeChanged,
+        readOnlyChanged,
+        occupancyChanged: occupancy !== prevOccupancy,
+      })
+    ) {
       return deco;
     }
     return mermaidDecorations(tr.state);

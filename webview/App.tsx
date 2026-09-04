@@ -7,6 +7,8 @@ import type { AppearanceSettings } from '../src/appearance.ts';
 import type { FormatAction, HostToWebview } from '../src/protocol';
 import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
+import { detectFormatActive, formatActiveEqual, type FormatActiveMap } from './formatActive';
+import { isFindChrome, shouldWindowCloseFind } from './findEscape';
 import { CODE_LANGUAGES } from './languages';
 import { OutlinePanel } from './OutlinePanel';
 import {
@@ -15,8 +17,10 @@ import {
   outlineDebounceMs,
   outlinePanelShouldRender,
   outlineTreeFromMarkdown,
+  parseOutlineHeadings,
   type OutlineNode,
 } from './outline';
+import { activeOutlineHeadingFrom, caretInViewport, outlineNavOffset } from './outlineActive';
 import { fileToBase64, imageFilesFromDataTransfer, inferImageMime, nextImageRequestId } from './pasteImages';
 import {
   applyExternalMarkdown,
@@ -26,6 +30,7 @@ import {
   isApplyingExternal,
   onDocumentText,
   onEditorViewReady,
+  onEditorViewUpdate,
   revealOffset,
 } from './sync';
 import { Toolbar } from './Toolbar';
@@ -47,6 +52,8 @@ export function App() {
   const [outlineEnabled, setOutlineEnabled] = useState(true);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [outlineNodes, setOutlineNodes] = useState<OutlineNode[]>([]);
+  const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
+  const [formatActive, setFormatActive] = useState<FormatActiveMap>({});
   const generationRef = useRef(0);
   const pendingMarkdownRef = useRef<HostMarkdown | undefined>(undefined);
   const imageOptionsRef = useRef<ImageResolveOptions>({});
@@ -248,6 +255,55 @@ export function App() {
   }, [session]);
 
   useEffect(() => {
+    return onEditorViewUpdate((current) => {
+      const sel = current.state.selection.main;
+      const text = current.state.doc.toString();
+      const nextActive = detectFormatActive(text, sel.from, sel.to);
+      setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
+      const headings = parseOutlineHeadings(outlineSourceRef.current || text);
+      let viewportFrom = current.viewport.from;
+      try {
+        const rect = current.scrollDOM.getBoundingClientRect();
+        const pos = current.posAtCoords({ x: rect.left + 16, y: rect.top + 8 });
+        if (typeof pos === 'number') {
+          viewportFrom = pos;
+        }
+      } catch {
+        // viewport.from is a fine fallback when coords are unavailable
+      }
+      const pos = outlineNavOffset({
+        viewportFrom,
+        caret: sel.head,
+        caretInView: caretInViewport(sel.head, current.viewport.from, current.viewport.to),
+      });
+      const headingFrom = activeOutlineHeadingFrom(headings, pos);
+      setActiveHeadingFrom((prev) => (prev === headingFrom ? prev : headingFrom));
+    });
+  }, [session]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      const handle = editorHandleRef.current;
+      if (!handle?.isSearchOpen()) {
+        return;
+      }
+      const target = event.target;
+      const inFind = isFindChrome(target instanceof Element ? target : null);
+      if (!shouldWindowCloseFind({ searchOpen: true, inFindChrome: inFind })) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      handle.closeSearch();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, []);
+
+  useEffect(() => {
     const saveFiles = async (files: File[]) => {
       if (readOnlyRef.current || files.length === 0) {
         return;
@@ -369,18 +425,30 @@ export function App() {
   });
 
   return (
-    <div className="app">
-      {toolbarEnabled ? (
-        <Toolbar
-          readOnly={readOnly}
-          outlineOpen={showOutline}
-          outlineEnabled={outlineEnabled}
-          onFormat={onFormat}
-          onToggleOutline={onToggleOutline}
-        />
+    <div className={`app${readOnly ? ' app-reading' : ''}`}>
+      {readOnly || toolbarEnabled ? (
+        <div className="atomic-chrome">
+          {readOnly ? (
+            <div className="atomic-reading-chip" role="status">
+              Reading
+            </div>
+          ) : null}
+          {toolbarEnabled ? (
+            <Toolbar
+              readOnly={readOnly}
+              outlineOpen={showOutline}
+              outlineEnabled={outlineEnabled}
+              formatActive={formatActive}
+              onFormat={onFormat}
+              onToggleOutline={onToggleOutline}
+            />
+          ) : null}
+        </div>
       ) : null}
       <div className="editor-shell" ref={shellRef}>
-        {showOutline ? <OutlinePanel nodes={outlineNodes} onSelect={onOutlineSelect} /> : null}
+        {showOutline ? (
+          <OutlinePanel nodes={outlineNodes} activeFrom={activeHeadingFrom} onSelect={onOutlineSelect} />
+        ) : null}
         <AtomicCodeMirrorEditor
           documentId={session.uri}
           markdownSource={session.text}

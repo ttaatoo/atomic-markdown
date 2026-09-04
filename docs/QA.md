@@ -18,9 +18,12 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 - Format wrap/unwrap, link, heading cycle, lists, snippet insert
 - Outline ATX/setext, `#` inside fences, duplicates, skipped levels, empty state, debounce helper
 - Invalid mermaid fence **body remains in the markdown**; `mermaidErrorMessage` shaping
+- Mermaid decoration rebuild gating (occupancy, not every caret move), SVG 100% normalize, height-cache hysteresis
+- Open-with-Atomic replace vs stack planner
+- Toolbar format-active detection; outline current-heading picker; find Escape predicates
 - Appearance clamps and CSS variable apply/remove
 
-**Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, or listener leaks under the VS Code host.
+**Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, listener leaks under the VS Code host, or the full mermaid-scroll renderer path (see below).
 
 ## F5 checklist
 
@@ -54,17 +57,32 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
    Insert ` ```mermaid ` / `not a diagram` / ` ``` `. Preview shows an inline error (`role=alert`). Click the widget (edit mode) to put the caret in the fence; the source remains. Valid mermaid still renders SVG.  
    *(Rendering is not executed in `npm test`.)*
 
+9b. **Mermaid scroll stability (gray-blank regression)**  
+    **Repro (before the fix):** Open a long `.md` with several mermaid fences separated by headings (welcome.md plus extra flowcharts is enough). Open with Atomic. Scroll through the mermaid sections with the wheel/trackpad. Failure: the webview became a solid Plannotator gray panel (html/body background). Other Atomic tabs stayed blank until **Developer: Reload Window**.  
+    **Root cause:** Mermaid `Decoration.replace` widgets remounted on every selection change and on viewport enter/leave. `toDOM` applied SVG then called `getBoundingClientRect` + `view.requestMeasure()` during CM6 DOM updates. Mermaid SVGs often ship `width/height="100%"`, which with CM6 `estimatedHeight` oscillated and could collapse the scroller. An uncaught exception or renderer hang in that loop tore down the React tree; `html.theme-plannotator` stayed gray. The shared webview renderer made it look like every document died.  
+    **Fix:** Rebuild mermaid decorations only when doc/theme/readOnly/fence-occupancy changes; reuse widgets via `eq`; apply cached SVG without a synchronous measure when height is already known; normalize 100% SVG dimensions; isolate mermaid exceptions. Theme still uses a `StateEffect` (no dummy doc change) so diagrams re-theme.  
+    **Verify:** Scroll a multi-mermaid doc — toolbar/editor stay mounted. Invalid mermaid still shows `role=alert`. Toggle light/dark — diagrams re-render.
+
 10. **Image paste / drop**  
     Save the markdown file. Paste a PNG from the clipboard; confirm `assets/` (or configured dir) gets a unique file and `![](./assets/…)` is inserted at the caret. Undo removes the markdown link (file on disk may remain). Drop a `.jpg`. Untitled unsaved buffer: error toast, clipboard unchanged.
 
 11. **Toolbar / shortcuts**  
-    Cmd/Ctrl+B / I / K wrap selection. Heading button cycles H1–H3. Hide toolbar via `atomicMarkdown.toolbar.enabled`. Confirm Cmd/Ctrl+S still saves (not hijacked).
+    Cmd/Ctrl+B / I / K wrap selection. Heading button cycles H1–H3. Icons (not letter glyphs) and pressed state when the caret is already in that mark. Hide toolbar via `atomicMarkdown.toolbar.enabled`. Confirm Cmd/Ctrl+S still saves (not hijacked). Format buttons stay disabled in reading mode.
+
+11b. **Open with Atomic replaces the tab**  
+    Open `welcome.md` in the default text editor. Command Palette / title icon → **Open with Atomic Markdown**. The text tab should become Atomic (same tab slot), not a second same-named tab. Explorer context on a `.md` that is already open as text should also reopen in place. **Reopen Editor With… → Text Editor** still works.
+
+11c. **Find Escape**  
+    Cmd/Ctrl+F opens the find bar. With the find field focused, Escape closes it. Cmd/Ctrl+F still opens it afterward.
 
 12. **Theme / typography**  
     With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash).
 
 13. **Outline**  
-    Wide window: outline visible with nested headings. Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: “No headings”. Toggle from title and toolbar. Setting `atomicMarkdown.outline.enabled` false hides it. Document is never given a `[TOC]` block.
+    Wide window: outline visible with nested headings. The heading nearest the viewport/caret highlights while scrolling and editing. Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: styled “No headings”. Toggle from title and toolbar. Setting `atomicMarkdown.outline.enabled` false hides it. Narrow (~640px) layout hides the rail so the editor is not crushed. Document is never given a `[TOC]` block.
+
+13b. **Reading mode**  
+    Toggle reading mode: title icon switches book ↔ pencil, and the webview shows a **Reading** chip. Format buttons stay disabled. Theme toggle remains visible in `followVscode`.
 
 14. **Disposals**  
     Open Atomic, close, open again on the same file several times. No duplicate image inserts per paste, no stuck generation.

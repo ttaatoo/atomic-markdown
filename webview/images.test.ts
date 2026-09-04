@@ -89,6 +89,17 @@ describe('rewriteImagesIn', () => {
     void throwing;
   });
 
+  it('does not rewrite images inside mermaid widgets', () => {
+    const mermaidImg = fakeImg('./diagram.png');
+    mermaidImg.closest = (selector: string) =>
+      selector.includes('cm-atomic-mermaid') ? {} : null;
+    const root = {
+      querySelectorAll: () => [mermaidImg],
+    } as unknown as ParentNode;
+    rewriteImagesIn(root, { documentDirWebviewUri: 'https://webview.example/doc/' });
+    assert.equal(mermaidImg.getAttribute('src'), './diagram.png');
+  });
+
   it('clears data: image src', () => {
     const dataImg = fakeImg('data:image/png;base64,xx');
     const root = {

@@ -94,6 +94,9 @@ export function rewriteImageElement(img: HTMLImageElement, options: ImageResolve
 export function rewriteImagesIn(root: ParentNode, options: ImageResolveOptions): void {
   for (const img of root.querySelectorAll('img')) {
     try {
+      if (typeof img.closest === 'function' && img.closest('.cm-atomic-mermaid')) {
+        continue;
+      }
       rewriteImageElement(img, options);
     } catch {
       // One bad src must not abort the MutationObserver for other images.

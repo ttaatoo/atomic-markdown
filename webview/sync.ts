@@ -1,5 +1,6 @@
 import { Transaction } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { findEscapeKeymap } from './findEscapeKeymap';
 import { applyFormat, insertSnippet, type FormatAction } from './format';
 import { mermaidBlocks } from './mermaidBlocks';
 
@@ -7,6 +8,7 @@ let view: EditorView | null = null;
 let applyingExternal = false;
 const viewReadyListeners = new Set<(current: EditorView) => void>();
 const documentTextListeners = new Set<(text: string) => void>();
+const viewUpdateListeners = new Set<(current: EditorView) => void>();
 
 export const captureEditorView = ViewPlugin.fromClass(
   class {
@@ -22,12 +24,16 @@ export const captureEditorView = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate): void {
-      if (!update.docChanged) {
-        return;
+      if (update.docChanged) {
+        const text = update.state.doc.toString();
+        for (const listener of documentTextListeners) {
+          listener(text);
+        }
       }
-      const text = update.state.doc.toString();
-      for (const listener of documentTextListeners) {
-        listener(text);
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        for (const listener of viewUpdateListeners) {
+          listener(update.view);
+        }
       }
     }
 
@@ -54,6 +60,16 @@ export function onDocumentText(listener: (text: string) => void): () => void {
   }
   return () => {
     documentTextListeners.delete(listener);
+  };
+}
+
+export function onEditorViewUpdate(listener: (current: EditorView) => void): () => void {
+  viewUpdateListeners.add(listener);
+  if (view) {
+    listener(view);
+  }
+  return () => {
+    viewUpdateListeners.delete(listener);
   };
 }
 
@@ -133,4 +149,4 @@ export function revealOffset(offset: number, moveCaret: boolean): boolean {
   return true;
 }
 
-export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks()];
+export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks(), findEscapeKeymap()];
