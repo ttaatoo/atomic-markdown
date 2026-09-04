@@ -8,7 +8,10 @@ import {
   anchorFromDomPositions,
   contentDefaultAnchor,
   domSelectionAnchor,
+  FOREIGN_CHROME_FOCUS_SELECTOR,
+  activeInsideWritingSurface,
   editorInteractionActive,
+  isForeignChromeFocus,
   isSelectionRefreshKey,
   placeSelectionBar,
   readCoordsAtPos,
@@ -54,27 +57,73 @@ function collapsedDomSelection() {
   };
 }
 
+function fakeActive(opts: { nodeName: string; id?: string; matches?: string[] }) {
+  const tokens = opts.matches ?? [];
+  return {
+    nodeName: opts.nodeName,
+    id: opts.id ?? '',
+    closest(selector: string) {
+      const parts = selector.split(',').map((part) => part.trim());
+      return parts.some((part) => tokens.includes(part)) ? this : null;
+    },
+  };
+}
+
+function flagsForActive(active: Parameters<typeof isForeignChromeFocus>[0]): SelectionBarFlags {
+  return {
+    readOnly: false,
+    selectionEmpty: false,
+    focusOnForeignChrome: isForeignChromeFocus(active),
+  };
+}
+
 describe('shouldShowSelectionBar', () => {
-  it('shows a non-empty edit selection even when hasFocus is false and activeElement is BODY', () => {
-    const flicker = editorInteractionActive({
-      hasFocus: false,
-      pointerOnBar: false,
-      activeInsideEditor: false,
-      activeInsideBar: false,
-      activeNodeName: 'BODY',
-    });
-    assert.equal(flicker, true);
+  it('shows a non-empty edit selection when activeElement is DIV#root or .app', () => {
+    const root = fakeActive({ nodeName: 'DIV', id: 'root', matches: ['#root'] });
+    const app = fakeActive({ nodeName: 'DIV', matches: ['.app'] });
+    const frame = fakeActive({ nodeName: 'DIV', matches: ['.editor-frame'] });
+    assert.equal(isForeignChromeFocus(root), false);
+    assert.equal(isForeignChromeFocus(app), false);
+    assert.equal(isForeignChromeFocus(frame), false);
+    assert.equal(shouldShowSelectionBar(flagsForActive(root)), true);
+    assert.equal(shouldShowSelectionBar(flagsForActive(app)), true);
+    assert.equal(shouldShowSelectionBar(flagsForActive(frame)), true);
+    assert.ok(activeInsideWritingSurface(root));
+    assert.ok(activeInsideWritingSurface(app));
+  });
+
+  it('shows a non-empty edit selection when hasFocus is false and activeElement is BODY', () => {
+    const body = fakeActive({ nodeName: 'BODY' });
+    assert.equal(isForeignChromeFocus(body), false);
+    assert.equal(shouldShowSelectionBar(flagsForActive(body)), true);
     assert.equal(
-      shouldShowSelectionBar({
-        readOnly: false,
-        selectionEmpty: false,
-        focusOnForeignChrome: !flicker,
+      editorInteractionActive({
+        hasFocus: false,
+        pointerOnBar: false,
+        activeInsideEditor: false,
+        activeInsideBar: false,
+        activeNodeName: 'BODY',
       }),
       true,
     );
   });
 
-  it('hides in reading mode, when the selection is empty, or when focus is on foreign chrome', () => {
+  it('hides when focus is on an outline button or notice dismiss', () => {
+    const outlineBtn = fakeActive({
+      nodeName: 'BUTTON',
+      matches: ['.outline-icon-btn', '.outline-panel button'],
+    });
+    const outlineItem = fakeActive({ nodeName: 'BUTTON', matches: ['.outline-item'] });
+    const dismiss = fakeActive({ nodeName: 'BUTTON', matches: ['.atomic-notice-dismiss'] });
+    assert.equal(isForeignChromeFocus(outlineBtn), true);
+    assert.equal(isForeignChromeFocus(outlineItem), true);
+    assert.equal(isForeignChromeFocus(dismiss), true);
+    assert.equal(shouldShowSelectionBar(flagsForActive(outlineBtn)), false);
+    assert.equal(shouldShowSelectionBar(flagsForActive(outlineItem)), false);
+    assert.equal(shouldShowSelectionBar(flagsForActive(dismiss)), false);
+  });
+
+  it('hides in reading mode or when the selection is empty', () => {
     assert.equal(
       shouldShowSelectionBar({ readOnly: true, selectionEmpty: false, focusOnForeignChrome: false }),
       false,
@@ -83,15 +132,41 @@ describe('shouldShowSelectionBar', () => {
       shouldShowSelectionBar({ readOnly: false, selectionEmpty: true, focusOnForeignChrome: false }),
       false,
     );
-    assert.equal(
-      shouldShowSelectionBar({ readOnly: false, selectionEmpty: false, focusOnForeignChrome: true }),
-      false,
-    );
+  });
+
+  it('defaults to show for !readOnly && !sel.empty without inverting editorOrBar', () => {
+    assert.equal(shouldShowSelectionBar(showFlags), true);
+    assert.match(FOREIGN_CHROME_FOCUS_SELECTOR, /\.outline-icon-btn/);
+    assert.match(FOREIGN_CHROME_FOCUS_SELECTOR, /\.atomic-notice-dismiss/);
+  });
+
+  it('still mounts a box when activeElement is #root and every coord source is null', () => {
+    const root = fakeActive({ nodeName: 'DIV', id: 'root', matches: ['#root'] });
+    const box = selectionBarFromSources({
+      flags: flagsForActive(root),
+      start: null,
+      end: null,
+      fallbacks: [null, null, null],
+      viewport,
+      bar: barSize,
+    });
+    assert.ok(box);
+    assert.deepEqual(box, placeSelectionBar(SAFE_DEFAULT_ANCHOR, viewport, barSize));
   });
 });
 
 describe('editorInteractionActive', () => {
-  it('treats body/html/null as flicker and outline buttons as a real leave', () => {
+  it('treats shell DIV and BODY as flicker, not a leave', () => {
+    assert.equal(
+      editorInteractionActive({
+        hasFocus: false,
+        pointerOnBar: false,
+        activeInsideEditor: false,
+        activeInsideBar: false,
+        activeNodeName: 'DIV',
+      }),
+      true,
+    );
     assert.equal(
       editorInteractionActive({
         hasFocus: false,
@@ -116,19 +191,10 @@ describe('editorInteractionActive', () => {
       editorInteractionActive({
         hasFocus: false,
         pointerOnBar: false,
-        activeInsideEditor: true,
-        activeInsideBar: false,
-        activeNodeName: 'DIV',
-      }),
-      true,
-    );
-    assert.equal(
-      editorInteractionActive({
-        hasFocus: false,
-        pointerOnBar: false,
         activeInsideEditor: false,
         activeInsideBar: false,
         activeNodeName: 'BUTTON',
+        focusOnForeignChrome: true,
       }),
       false,
     );
@@ -317,7 +383,10 @@ describe('no top chrome', () => {
     assert.match(app, /anchorFromDomPositions/);
     assert.match(app, /contentDefaultAnchor/);
     assert.match(app, /selectionBarFromSources/);
-    assert.match(app, /focusOnForeignChrome/);
+    assert.match(app, /isForeignChromeFocus/);
+    assert.match(app, /focusOnForeignChrome:\s*isForeignChromeFocus\(active\)/);
+    assert.equal(app.includes('editorInteractionActive'), false);
+    assert.equal(app.includes('focusOnForeignChrome: !editorOrBar'), false);
     assert.equal(css.includes('.atomic-chrome'), false);
     assert.equal(css.includes('.atomic-reading-chip'), false);
     assert.match(css, /\.selection-format-bar/);

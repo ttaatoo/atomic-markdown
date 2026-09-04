@@ -34,7 +34,7 @@ import {
   anchorFromDomPositions,
   contentDefaultAnchor,
   domSelectionAnchor,
-  editorInteractionActive,
+  isForeignChromeFocus,
   isSelectionRefreshKey,
   readCoordsAtPos,
   selectionBarFromSources,
@@ -330,13 +330,6 @@ export function App() {
         }
         const barEl = selectionBarElRef.current;
         const active = document.activeElement;
-        const editorOrBar = editorInteractionActive({
-          hasFocus: current.hasFocus,
-          pointerOnBar: pointerOnBarRef.current,
-          activeInsideEditor: Boolean(active && current.dom.contains(active)),
-          activeInsideBar: Boolean(barEl && active && barEl.contains(active)),
-          activeNodeName: active?.nodeName ?? null,
-        });
         let start: ReturnType<typeof readCoordsAtPos> = null;
         let end: ReturnType<typeof readCoordsAtPos> = null;
         try {
@@ -367,7 +360,7 @@ export function App() {
           flags: {
             readOnly: readOnlyRef.current,
             selectionEmpty: sel.empty,
-            focusOnForeignChrome: !editorOrBar,
+            focusOnForeignChrome: isForeignChromeFocus(active),
           },
           start,
           end,

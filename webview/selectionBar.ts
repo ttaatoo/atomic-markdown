@@ -4,10 +4,72 @@ export interface SelectionBarFlags {
   readOnly: boolean;
   selectionEmpty: boolean;
   /**
-   * True only when focus is on a real control outside the editor/bar
-   * (outline button, notice dismiss, …). Body/html flicker is not this.
+   * True only when focus is on a real interactive control outside the
+   * writing surface (outline item/button/twisty, notice dismiss).
+   * Shell nodes (#root, .app, .editor-frame, …) are never this.
    */
   focusOnForeignChrome: boolean;
+}
+
+/** Interactive chrome that should hide the bar while it owns focus. */
+export const FOREIGN_CHROME_FOCUS_SELECTOR = [
+  '.outline-panel button',
+  '.outline-item',
+  '.outline-twisty',
+  '.outline-icon-btn',
+  '.atomic-notice-dismiss',
+].join(', ');
+
+/** Writing-surface hosts. Focus here is not a leave. */
+export const WRITING_SURFACE_FOCUS_SELECTOR = [
+  '.atomic-cm-editor',
+  '.cm-editor',
+  '.editor-frame',
+  '.editor-shell',
+  '.app',
+  '#root',
+  '.selection-format-bar',
+].join(', ');
+
+type ClosestNode = {
+  nodeName?: string | null;
+  closest?(selector: string): unknown;
+};
+
+/**
+ * Only outline / notice controls count as foreign. #root, .app, and other
+ * shell DIVs after a mouse select must not suppress the bar.
+ */
+export function isForeignChromeFocus(active: ClosestNode | null | undefined): boolean {
+  if (!active || typeof active.closest !== 'function') {
+    return false;
+  }
+  try {
+    return Boolean(active.closest(FOREIGN_CHROME_FOCUS_SELECTOR));
+  } catch {
+    return false;
+  }
+}
+
+/** CM editor DOM or the Atomic/webview shell around it. */
+export function activeInsideWritingSurface(
+  active: ClosestNode | null | undefined,
+  editorRoot?: { contains(node: unknown): boolean } | null,
+): boolean {
+  if (!active) {
+    return false;
+  }
+  if (editorRoot && typeof editorRoot.contains === 'function' && editorRoot.contains(active)) {
+    return true;
+  }
+  if (typeof active.closest !== 'function') {
+    return false;
+  }
+  try {
+    return Boolean(active.closest(WRITING_SURFACE_FOCUS_SELECTOR));
+  } catch {
+    return false;
+  }
 }
 
 export interface SelectionAnchor {
@@ -46,19 +108,35 @@ export function shouldShowSelectionBar(input: SelectionBarFlags): boolean {
   return true;
 }
 
-/** Treat body/html/null as a webview focus flicker, not a real leave. */
+/**
+ * True while the user is still in the writing surface or a focus flicker.
+ * Shell DIV (#root, .app, …) is not a leave. Prefer isForeignChromeFocus
+ * for the show gate — do not invert this broadly.
+ */
 export function editorInteractionActive(input: {
   hasFocus: boolean;
   pointerOnBar: boolean;
   activeInsideEditor: boolean;
   activeInsideBar: boolean;
   activeNodeName?: string | null;
+  focusOnForeignChrome?: boolean;
+  activeOnWritingShell?: boolean;
 }): boolean {
-  if (input.hasFocus || input.pointerOnBar || input.activeInsideEditor || input.activeInsideBar) {
+  if (input.focusOnForeignChrome) {
+    return false;
+  }
+  if (
+    input.hasFocus ||
+    input.pointerOnBar ||
+    input.activeInsideEditor ||
+    input.activeInsideBar ||
+    input.activeOnWritingShell
+  ) {
     return true;
   }
   const name = input.activeNodeName?.toUpperCase();
-  return !name || name === 'BODY' || name === 'HTML';
+  // BODY/HTML flicker and generic shell DIV/SPAN are not a real leave.
+  return !name || name === 'BODY' || name === 'HTML' || name === 'DIV' || name === 'SPAN';
 }
 
 export function asSelectionAnchor(rect: Partial<SelectionAnchor> | null | undefined): SelectionAnchor | null {
