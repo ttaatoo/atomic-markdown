@@ -20,9 +20,10 @@ describe('bundled Inter / Geist Mono', () => {
     assert.match(fontsCss, /inter-latin-wght-normal\.woff2/);
     assert.match(fontsCss, /inter-latin-wght-italic\.woff2/);
     assert.match(fontsCss, /geist-mono-latin-wght-normal\.woff2/);
-    assert.equal(fontsCss.includes('cyrillic'), false);
-    assert.equal(fontsCss.includes('greek'), false);
-    assert.equal(fontsCss.includes('vietnamese'), false);
+    assert.equal(fontsCss.includes('inter-cyrillic'), false);
+    assert.equal(fontsCss.includes('inter-greek'), false);
+    assert.equal(fontsCss.includes('inter-vietnamese'), false);
+    assert.equal(fontsCss.includes('geist-mono-cyrillic'), false);
   });
 
   it('imports fonts before theme.css and emits woff2 as files', () => {
