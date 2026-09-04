@@ -71,24 +71,24 @@
             "light"
           ],
           "enumDescriptions": [
-            "Match the workbench kind and borrow editor/sidebar neutrals (restrained accent).",
-            "Plannotator default dark palette.",
-            "Plannotator default light palette."
+            "Use Plannotator’s default dark or light palette according to the workbench kind. Does not remap the canvas to VS Code editor colors.",
+            "Exact Plannotator default dark tokens (packages/ui/themes/plannotator.css).",
+            "Exact Plannotator default light tokens (packages/ui/themes/plannotator.css)."
           ],
           "default": "followVscode",
-          "description": "Writing-surface palette. followVscode uses workbench neutrals plus a quiet accent. dark/light use Plannotator paper. Accent chroma stays restrained."
+          "description": "Which Plannotator palette to use. dark and light are the exact default tokens from packages/ui/themes/plannotator.css. followVscode only picks that dark or light pair from the workbench kind — it does not remap the canvas to VS Code editor colors or quiet the accent."
         },
         "atomicMarkdown.fontFamily": {
           "type": "string",
           "default": "",
-          "description": "CSS font-family for the writing surface. Empty uses bundled Inter Variable / Geist Mono Variable with system fallbacks."
+          "description": "Optional font stack for the writing surface. Empty follows the VS Code workbench font. Bundled Inter Variable / Geist Mono apply only if you name them here."
         },
         "atomicMarkdown.fontSize": {
-          "type": "number",
-          "default": 17,
+          "type": ["number", "null"],
+          "default": null,
           "minimum": 12,
           "maximum": 28,
-          "description": "Font size in pixels for the writing surface (12–28, default 17)."
+          "description": "Optional body size in pixels (12–28). Empty/null follows the VS Code editor or workbench font size."
         },
         "atomicMarkdown.lineHeight": {
           "type": "number",

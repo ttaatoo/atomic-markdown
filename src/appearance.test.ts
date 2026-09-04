@@ -14,8 +14,9 @@ describe('appearance clamps', () => {
     assert.equal(clampFontSize(17), 17);
     assert.equal(clampFontSize(3), 12);
     assert.equal(clampFontSize(99), 28);
-    assert.equal(clampFontSize('nope'), 17);
-    assert.equal(clampFontSize(''), 17);
+    assert.equal(clampFontSize('nope'), null);
+    assert.equal(clampFontSize(''), null);
+    assert.equal(clampFontSize(undefined), null);
     assert.equal(clampLineHeight(1.7), 1.7);
     assert.equal(clampLineHeight(0.5), 1.2);
     assert.equal(clampLineHeight(4), 2.4);
@@ -51,9 +52,11 @@ describe('appearance clamps', () => {
     assert.equal(appearance.outlineEnabled, true);
   });
 
-  it('defaults the formatting toolbar off', () => {
+  it('defaults toolbar off and font size to the workbench', () => {
     const appearance = appearanceFromConfig(() => undefined, 'followVscode');
     assert.equal(appearance.toolbarEnabled, false);
     assert.equal(appearance.outlineEnabled, true);
+    assert.equal(appearance.fontFamily, '');
+    assert.equal(appearance.fontSize, null);
   });
 });

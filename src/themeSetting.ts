@@ -23,15 +23,8 @@ export function nextExplicitTheme(resolved: PaletteKind): Exclude<ThemeSetting, 
   return resolved === 'light' ? 'dark' : 'light';
 }
 
-export function htmlThemeClass(palette: PaletteKind, followWorkbench = false): string {
-  const parts = ['theme-plannotator'];
-  if (followWorkbench) {
-    parts.push('theme-follow');
-  }
-  if (palette === 'light') {
-    parts.push('light');
-  }
-  return parts.join(' ');
+export function htmlThemeClass(palette: PaletteKind): string {
+  return palette === 'light' ? 'theme-plannotator light' : 'theme-plannotator';
 }
 
 export function themeConfigurationTarget(hasWorkspaceFolder: boolean): 'workspace' | 'global' {

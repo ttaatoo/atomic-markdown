@@ -8,7 +8,8 @@ body,
   overflow: hidden;
   background: var(--background, var(--vscode-editor-background));
   color: var(--foreground, var(--vscode-editor-foreground));
-  font-family: var(--font-sans, var(--vscode-font-family));
+  font-family: var(--vscode-font-family), system-ui, sans-serif;
+  font-size: var(--vscode-font-size, 13px);
 }
 
 .app {
@@ -32,9 +33,8 @@ body,
  * Plannotator default palettes — tokens copied from
  * packages/ui/themes/plannotator.css (do not invent other palettes).
  * Scoped to html.theme-plannotator / .light; writing-surface colors
- * come from these oklch values, not --vscode-editor-*. Visual treatment
- * (prose measure, heading steps, quote rail, .pn-code-like fences, chrome)
- * is inspired by Plannotator's open-source theme — this is not Plannotator.
+ * come from these oklch values, not --vscode-editor-* and not desaturated
+ * approximations. followVscode only picks dark vs light. This is not Plannotator.
  */
 html.theme-plannotator {
   --background: oklch(0.15 0.02 260);
@@ -61,8 +61,9 @@ html.theme-plannotator {
   --warning: oklch(0.75 0.15 85);
   --warning-foreground: oklch(0.20 0.02 260);
 
-  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
-  --font-mono: 'Geist Mono Variable', 'Geist Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  /* Workbench stacks on purpose — plannotator.css Inter/Geist are not the default look. */
+  --font-sans: var(--vscode-font-family), system-ui, sans-serif;
+  --font-mono: var(--vscode-editor-font-family), ui-monospace, monospace;
   --radius: 0.625rem;
 
   --code-bg: oklch(0.26 0.02 260);
@@ -97,36 +98,6 @@ html.theme-plannotator.light {
   --code-bg: oklch(0.92 0.01 260);
 }
 
-/* Writing-surface chroma: keep source tokens above, restrain accent ≤10%. */
-html.theme-plannotator {
-  --primary: oklch(0.72 0.08 280);
-  --secondary: oklch(0.70 0.04 180);
-  --accent: oklch(0.72 0.06 70);
-  --ring: oklch(0.72 0.08 280);
-}
-
-html.theme-plannotator.light {
-  --primary: oklch(0.46 0.09 280);
-  --secondary: oklch(0.42 0.04 180);
-  --accent: oklch(0.48 0.07 55);
-  --ring: oklch(0.46 0.09 280);
-}
-
-/* followVscode: workbench neutrals so a light paper card cannot clash with a dark IDE. */
-html.theme-plannotator.theme-follow {
-  --background: var(--vscode-editor-background);
-  --foreground: var(--vscode-editor-foreground);
-  --card: var(--vscode-sideBar-background, var(--vscode-editor-background));
-  --card-foreground: var(--vscode-sideBar-foreground, var(--vscode-editor-foreground));
-  --popover: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  --popover-foreground: var(--vscode-editorWidget-foreground, var(--vscode-editor-foreground));
-  --muted: color-mix(in srgb, var(--vscode-editor-foreground) 8%, var(--vscode-editor-background));
-  --muted-foreground: var(--vscode-descriptionForeground, var(--vscode-editor-foreground));
-  --border: var(--vscode-widget-border, var(--vscode-panel-border, transparent));
-  --input: var(--vscode-input-background, var(--muted));
-  --code-bg: color-mix(in srgb, var(--vscode-editor-foreground) 6%, var(--vscode-editor-background));
-}
-
 /*
  * Map Plannotator tokens onto Atomic. Specificity beats Atomic's
  * [data-theme="light"] .atomic-cm-editor block so those hardcoded
@@ -135,8 +106,8 @@ html.theme-plannotator.theme-follow {
 html.theme-plannotator .atomic-cm-editor,
 html.theme-plannotator[data-theme='light'] .atomic-cm-editor,
 html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
-  --atomic-editor-font: var(--atomic-user-font, var(--font-sans));
-  --atomic-editor-font-mono: var(--font-mono);
+  --atomic-editor-font: var(--atomic-user-font, var(--vscode-font-family));
+  --atomic-editor-font-mono: var(--vscode-editor-font-family, var(--font-mono));
   --atomic-editor-fg: var(--foreground);
   --atomic-editor-fg-muted: var(--muted-foreground);
   --atomic-editor-fg-faint: var(--muted-foreground);
@@ -151,24 +122,24 @@ html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
   --atomic-editor-link-hover: var(--accent);
   --atomic-editor-code-bg: var(--code-bg);
   --atomic-editor-code-rail: color-mix(in oklch, var(--primary) 28%, var(--border));
-  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 14%, transparent);
-  --atomic-editor-search-bg: color-mix(in oklch, var(--primary) 16%, transparent);
-  --atomic-editor-search-bg-active: color-mix(in oklch, var(--primary) 28%, transparent);
-  --atomic-editor-initial-reveal-bg: color-mix(in oklch, var(--primary) 12%, transparent);
-  --atomic-editor-initial-reveal-bg-strong: color-mix(in oklch, var(--primary) 20%, transparent);
-  --atomic-editor-body-size: var(--atomic-user-size, 17px);
+  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 22%, transparent);
+  --atomic-editor-search-bg: color-mix(in oklch, var(--primary) 28%, transparent);
+  --atomic-editor-search-bg-active: color-mix(in oklch, var(--primary) 45%, transparent);
+  --atomic-editor-initial-reveal-bg: color-mix(in oklch, var(--primary) 16%, transparent);
+  --atomic-editor-initial-reveal-bg-strong: color-mix(in oklch, var(--primary) 30%, transparent);
+  --atomic-editor-body-size: var(--atomic-user-size, var(--vscode-editor-font-size, var(--vscode-font-size, 13px)));
   --atomic-editor-body-leading: var(--atomic-user-leading, 1.7);
   --atomic-editor-body-measure: var(--atomic-user-measure, 70ch);
-  --atomic-editor-hl-keyword: var(--foreground);
-  --atomic-editor-hl-string: var(--muted-foreground);
-  --atomic-editor-hl-number: var(--foreground);
+  --atomic-editor-hl-keyword: var(--primary);
+  --atomic-editor-hl-string: var(--secondary);
+  --atomic-editor-hl-number: var(--accent);
   --atomic-editor-hl-comment: var(--muted-foreground);
-  --atomic-editor-hl-type: var(--foreground);
-  --atomic-editor-hl-function: var(--foreground);
+  --atomic-editor-hl-type: var(--primary);
+  --atomic-editor-hl-function: var(--secondary);
   --atomic-editor-hl-property: var(--foreground);
-  --atomic-editor-hl-regexp: var(--muted-foreground);
-  --atomic-editor-hl-escape: var(--muted-foreground);
-  --atomic-editor-hl-tag: var(--foreground);
+  --atomic-editor-hl-regexp: var(--accent);
+  --atomic-editor-hl-escape: var(--accent);
+  --atomic-editor-hl-tag: var(--primary);
   --atomic-editor-hl-variable: var(--foreground);
   --atomic-editor-hl-operator: var(--muted-foreground);
   --atomic-editor-hl-invalid: var(--destructive);
@@ -215,7 +186,6 @@ html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
 }
 
 html {
-  --atomic-user-size: 17px;
   --atomic-user-leading: 1.7;
   --atomic-user-measure: 70ch;
 }
@@ -226,7 +196,7 @@ html {
 
 .atomic-cm-editor .cm-content {
   max-width: var(--atomic-user-measure, 70ch);
-  font-size: var(--atomic-user-size, 17px);
+  font-size: var(--atomic-user-size, var(--vscode-editor-font-size, var(--vscode-font-size, 13px)));
   line-height: var(--atomic-user-leading, 1.7);
 }
 
@@ -239,7 +209,7 @@ html.theme-plannotator .atomic-cm-editor .cm-scroller {
 html.theme-plannotator .atomic-cm-editor .cm-content {
   max-width: var(--atomic-editor-body-measure, var(--atomic-user-measure, 70ch));
   padding-inline: 1.25rem;
-  font-size: var(--atomic-editor-body-size, var(--atomic-user-size, 17px));
+  font-size: var(--atomic-editor-body-size);
   line-height: var(--atomic-editor-body-leading, var(--atomic-user-leading, 1.7));
   font-family: var(--atomic-editor-font, var(--font-sans));
 }
@@ -429,18 +399,20 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 .atomic-notice {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.55rem 0.8rem;
+  gap: 0.6rem;
+  padding: 0.4rem 0.65rem;
   border-bottom: 1px solid var(--border, var(--vscode-widget-border));
   background: color-mix(in oklch, var(--muted, #888) 70%, var(--background, transparent));
   color: var(--foreground, var(--vscode-editor-foreground));
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
 }
 
 .atomic-notice-text {
   margin: 0;
   flex: 1;
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: inherit;
+  line-height: 1.35;
 }
 
 .atomic-notice-dismiss {
@@ -449,10 +421,10 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   background: transparent;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
   font: inherit;
-  font-size: 0.78rem;
+  font-size: inherit;
   cursor: pointer;
-  padding: 0.15rem 0.2rem;
-  border-radius: calc(var(--radius, 0.625rem) * 0.4);
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
 }
 
 .atomic-notice-dismiss:hover,
@@ -464,29 +436,31 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 2.25rem;
-  padding: 0.2rem 0.45rem;
+  gap: 2px;
+  min-height: 22px;
+  padding: 0 4px;
   border-bottom: 1px solid var(--border, var(--vscode-widget-border));
   background: color-mix(in oklch, var(--card, var(--vscode-editor-background)) 70%, var(--background, transparent));
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
 }
 
 .atomic-chrome-quiet {
-  min-height: 2.15rem;
+  min-height: 22px;
   background: var(--background, var(--vscode-editor-background));
 }
 
 .atomic-reading-chip {
   flex: 0 0 auto;
-  margin-left: 0.15rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
+  margin-left: 2px;
+  padding: 1px 7px;
+  border-radius: 2px;
   border: 1px solid var(--border, var(--vscode-widget-border));
   background: var(--muted, transparent);
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
-  font-size: 0.75rem;
-  font-weight: 550;
-  letter-spacing: 0.01em;
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
@@ -500,8 +474,8 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   flex: 1;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.15rem 0.35rem;
+  gap: 2px;
+  padding: 0 2px;
   background: transparent;
 }
 
@@ -514,23 +488,23 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   background: transparent;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 550;
+  font-size: inherit;
+  font-weight: 400;
   line-height: 1;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0.35rem 0.4rem;
-  border-radius: calc(var(--radius, 0.625rem) * 0.5);
+  min-width: 22px;
+  min-height: 22px;
+  padding: 2px 4px;
+  border-radius: 3px;
   cursor: pointer;
   opacity: 0.92;
   transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
 .atomic-format-toggle {
-  min-width: 2.5rem;
-  padding-inline: 0.55rem;
-  font-size: 0.78rem;
-  font-weight: 550;
+  min-width: 22px;
+  padding-inline: 6px;
+  font-size: inherit;
+  font-weight: 400;
 }
 
 .atomic-toolbar-icon {
@@ -561,23 +535,46 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 
 .atomic-toolbar-sep {
   width: 1px;
-  height: 1.05rem;
-  margin: 0 0.28rem;
+  height: 14px;
+  margin: 0 4px;
   background: var(--border, var(--vscode-widget-border));
   opacity: 0.85;
 }
 
-/* Side rail (wide). Never apply this as the only layout when the frame is narrow. */
+/*
+ * Feishu-style push rail: fixed sidebar width resizes the writing column.
+ * Collapsed state is a thin icon rail. Overlay is last resort (≤240px, JS).
+ */
 .outline-panel {
-  flex: 0 1 15.5rem;
+  flex: 0 0 15.5rem;
   width: 15.5rem;
-  min-width: 0;
-  max-width: min(20rem, 40%);
+  min-width: 15.5rem;
+  max-width: 15.5rem;
   overflow: auto;
   border-right: 1px solid var(--border, var(--vscode-widget-border));
   background: var(--card, var(--vscode-editor-background));
   color: var(--card-foreground, var(--vscode-editor-foreground));
-  padding: 0.7rem 0.5rem 0.95rem;
+  padding: 4px 2px 8px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.outline-panel.outline-panel-collapsed {
+  flex: 0 0 2rem;
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding: 0.35rem 0.1rem;
+  overflow: hidden;
+}
+
+@container atomic-editor (max-width: 720px) {
+  .outline-panel:not(.outline-panel-collapsed):not(.outline-panel-overlay) {
+    flex: 0 0 min(12.5rem, 42%);
+    width: min(12.5rem, 42%);
+    min-width: 8rem;
+    max-width: 42%;
+  }
 }
 
 .outline-backdrop {
@@ -590,11 +587,6 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   cursor: default;
 }
 
-/*
- * Overlay drawer: out of the writing-row flex flow so it cannot crush the column.
- * JS mounts `.outline-panel-overlay` as a sibling of `.editor-shell`.
- * The container query is a fallback if a panel is still a flex child of a narrow shell.
- */
 .outline-panel.outline-panel-overlay,
 .editor-frame.outline-overlay .outline-panel {
   position: absolute;
@@ -610,37 +602,60 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   box-shadow: 0 10px 32px color-mix(in oklch, var(--foreground, #000) 10%, transparent);
 }
 
-@container atomic-editor (max-width: 640px) {
-  .editor-shell > .outline-panel {
-    position: absolute;
-    z-index: 4;
-    top: 0;
-    right: auto;
-    bottom: 0;
-    left: 0;
-    flex: none;
-    width: min(16.5rem, 86%);
-    max-width: 16.5rem;
-  }
+.outline-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 22px;
+  padding: 0 2px 2px;
 }
 
 .outline-panel-title {
-  font-size: 0.72rem;
-  font-weight: 550;
-  letter-spacing: 0.02em;
+  flex: 1;
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
-  padding: 0.15rem 0.5rem 0.5rem;
+  padding: 0 4px;
+}
+
+.outline-icon-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.outline-icon-btn:hover,
+.outline-icon-btn:focus-visible {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  outline: none;
+}
+
+.outline-panel-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .outline-empty {
-  margin: 0.15rem 0.35rem;
-  padding: 0.55rem 0.6rem;
-  font-size: 0.8rem;
-  line-height: 1.4;
+  margin: 2px 4px;
+  padding: 6px 8px;
+  font-size: inherit;
+  line-height: 1.35;
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
   background: var(--muted, color-mix(in oklch, var(--card, #222) 88%, transparent));
   border: 1px dashed var(--border, var(--vscode-widget-border));
-  border-radius: 0.4rem;
+  border-radius: 3px;
 }
 
 .outline-list {
@@ -650,22 +665,72 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 }
 
 .outline-list .outline-list {
-  padding-left: 0.65rem;
+  padding-left: 0;
+}
+
+.outline-row {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  gap: 0;
+}
+
+.outline-twisty,
+.outline-twisty-spacer {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.outline-twisty {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outline-twisty::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 3.5px 0 3.5px 5px;
+  border-color: transparent transparent transparent currentColor;
+  transform: rotate(0deg);
+}
+
+.outline-twisty-open::before {
+  transform: rotate(90deg);
+}
+
+.outline-twisty:hover,
+.outline-twisty:focus-visible {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  outline: none;
 }
 
 .outline-item {
   display: block;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: left;
   appearance: none;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: inherit;
   line-height: 1.35;
-  padding: 0.28rem 0.5rem;
-  border-radius: calc(var(--radius, 0.625rem) * 0.55);
+  padding: 2px 4px;
+  border-radius: 3px;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -683,20 +748,22 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   font-weight: 600;
 }
 
-.outline-level-1 { font-weight: 650; }
-.outline-level-2 { padding-left: 0.7rem; }
-.outline-level-3 { padding-left: 1.05rem; }
-.outline-level-4 { padding-left: 1.4rem; }
-.outline-level-5 { padding-left: 1.75rem; }
-.outline-level-6 { padding-left: 2.1rem; }
+.outline-level-1 { font-weight: 600; }
+.outline-level-2 { padding-left: 8px; }
+.outline-level-3 { padding-left: 16px; }
+.outline-level-4 { padding-left: 24px; }
+.outline-level-5 { padding-left: 32px; }
+.outline-level-6 { padding-left: 40px; }
 
 .atomic-toolbar-btn:focus-visible,
 .atomic-format-toggle:focus-visible,
 .atomic-notice-dismiss:focus-visible,
 .outline-item:focus-visible,
+.outline-twisty:focus-visible,
+.outline-icon-btn:focus-visible,
 .outline-backdrop:focus-visible {
-  outline: 2px solid var(--ring, var(--vscode-focusBorder));
-  outline-offset: 2px;
+  outline: 1px solid var(--ring, var(--vscode-focusBorder));
+  outline-offset: -1px;
 }
 
 @media (prefers-reduced-motion: reduce) {

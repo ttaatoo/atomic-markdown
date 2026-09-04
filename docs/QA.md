@@ -22,8 +22,8 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 - Open-with-Atomic replace vs stack planner
 - Toolbar format-active detection; outline heading-at-scroll-position (not leftover caret); find Ctrl/F + Escape routing and package.json when clauses
 - Appearance clamps and CSS variable apply/remove
-- Plannotator token mapping, writing-surface CSS contracts, and Inter/Geist latin font bundling
-- Outline overlay vs dead toggle; YAML frontmatter / thematic-break `---` excluded from headings; toolbar default off; image failure copy
+- Plannotator token mapping (exact dark/light oklch, no theme-follow mute), writing-surface CSS contracts, and optional Inter/Geist latin font bundling
+- Feishu outline placement (push rail / icon rail / last-resort overlay), nested heading collapse + prune, YAML frontmatter / thematic-break `---` excluded from headings; toolbar default off; image failure copy
 
 **Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, listener leaks under the VS Code host, or the full mermaid-scroll renderer path (see below).
 
@@ -78,11 +78,12 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
     With Atomic focused, Cmd/Ctrl+F must open Atomic’s in-editor find (not the workbench Search sidebar). Escape closes that find while it is open and does nothing special when it is closed. Title search icon still calls `atomicMarkdown.find` → `openSearch`.
 
 12. **Theme / typography**  
-    With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash). Empty `fontFamily` should render Inter / Geist Mono (not the workbench UI font). Glance: ~70ch centered prose, heading size steps, primary quote rail, rounded/muted tables, primary-tinted selection, outline card + current-heading wash, obvious Reading pill.
+    With `atomicMarkdown.theme` = `followVscode`, the title **color-mode** icon is visible. Toggle writes explicit opposite light/dark. The canvas must use Plannotator’s exact dark or light tokens (saturated primary/accent), not VS Code editor background. Change `fontSize` / `contentWidth` in settings: scroll position and CM instance remain (no remount flash). Empty `fontFamily` / unset `fontSize` must match the workbench / editor font (Explorer/tabs), not bundled Inter. Glance: ~70ch centered prose, heading size steps, primary quote rail, rounded/muted tables, primary-tinted selection, outline card + current-heading wash, Reading chip.
 
 13. **Outline**  
-    Wide window: outline visible with nested headings. After jumping to **Tables**, wheel-scroll until **Fences** is at the top: the outline highlight must move to Fences (scroll-driven, not stuck on the click/caret). Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: teaching empty state. Toggle from title and Format/outline control. Setting `atomicMarkdown.outline.enabled` false hides it. Frontmatter in welcome.md must not appear in the outline. Document is never given a `[TOC]` block.  
-    **Narrow overlay (must not be a split pane):** shrink the Atomic editor group to ~350–500px. Open outline. The writing column must stay the full frame width; the TOC floats over it (drawer + backdrop). It must not flex-shrink a second column. Toggle Show/Hide both ways. Escape (when find is closed) or backdrop click closes the drawer. Widen past ~640px: outline becomes the side rail again.
+    Wide window: outline visible as a **push rail** (writing column shrinks; prose is not covered). Nested headings have twisties; collapse a parent and reload is not required — state lasts the session. After jumping to **Tables**, wheel-scroll until **Fences** is at the top: the outline highlight must move to Fences (scroll-driven, not stuck on the click/caret). Click jumps and (edit mode) moves caret. Reading mode: scroll/reveal without needing to expose source. Empty note: teaching empty state. Toggle from title, Format/outline control, and the panel chevron/icon — none may be a dead zone. Collapse to the thin icon rail and expand again without losing caret/scroll. Setting `atomicMarkdown.outline.enabled` false hides it. Frontmatter in welcome.md must not appear in the outline. Document is never given a `[TOC]` block.  
+    **Push, not overlay, at normal narrow widths:** shrink the Atomic editor group to ~350–500px. Open outline. The writing column must **shrink** beside the rail (not stay full-width under a drawer). Toggle Show/Hide both ways.  
+    **Last-resort overlay:** only when the frame is extremely narrow (≤240px) may the expanded TOC float over the prose. Escape (when find is closed) or backdrop click then collapses to the icon rail.
 
 13b. **Reading mode**  
     Toggle reading mode: title icon switches book ↔ pencil, and the webview shows a **Reading** chip. Format buttons stay disabled. Theme toggle remains visible in `followVscode`.

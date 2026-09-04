@@ -34,13 +34,13 @@ describe('bundled Inter / Geist Mono', () => {
     assert.match(esbuild, /'\.woff2': 'file'/);
   });
 
-  it('depends on fontsource-variable packages and documents the default stack', () => {
+  it('depends on fontsource-variable packages as an optional named stack', () => {
     assert.ok(pkg.dependencies['@fontsource-variable/inter']);
     assert.ok(pkg.dependencies['@fontsource-variable/geist-mono']);
-    assert.match(
-      pkg.contributes.configuration.properties['atomicMarkdown.fontFamily'].description ?? '',
-      /Inter Variable/,
-    );
+    const family = pkg.contributes.configuration.properties['atomicMarkdown.fontFamily'].description ?? '';
+    assert.match(family, /workbench/);
+    assert.match(family, /Inter Variable/);
+    assert.match(family, /only if you name them/);
     const latin = [
       'node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
       'node_modules/@fontsource-variable/inter/files/inter-latin-wght-italic.woff2',

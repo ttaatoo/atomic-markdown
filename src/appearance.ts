@@ -1,7 +1,7 @@
 export interface AppearanceSettings {
   theme: import('./themeSetting').ThemeSetting;
   fontFamily: string;
-  fontSize: number;
+  fontSize: number | null;
   lineHeight: number;
   contentWidthCh: number;
   toolbarEnabled: boolean;
@@ -10,12 +10,12 @@ export interface AppearanceSettings {
 
 export const APPEARANCE_DEFAULTS = {
   fontFamily: '',
-  fontSize: 17,
+  fontSize: null as number | null,
   lineHeight: 1.7,
   contentWidthCh: 70,
   toolbarEnabled: false,
   outlineEnabled: true,
-} as const;
+};
 
 function parseFiniteNumber(value: unknown): number | undefined {
   if (value === '' || value === null || value === undefined) {
@@ -25,10 +25,11 @@ function parseFiniteNumber(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-export function clampFontSize(value: unknown): number {
+/** Unset / empty / invalid follows the workbench editor or UI font size. */
+export function clampFontSize(value: unknown): number | null {
   const n = parseFiniteNumber(value);
   if (n === undefined) {
-    return APPEARANCE_DEFAULTS.fontSize;
+    return null;
   }
   return Math.min(28, Math.max(12, Math.round(n)));
 }
@@ -49,7 +50,7 @@ export function clampContentWidthCh(value: unknown): number {
   return Math.min(120, Math.max(40, Math.round(n)));
 }
 
-/** Empty string means the Plannotator stack. Reject CSS-breaking characters. */
+/** Empty string follows the VS Code workbench/editor font. Reject CSS-breaking characters. */
 export function sanitizeFontFamily(value: unknown): string {
   if (typeof value !== 'string') {
     return '';

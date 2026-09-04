@@ -27,7 +27,7 @@ import {
   type VersionedEcho,
 } from './sync';
 import { toLineFeed } from './text';
-import { currentPaletteKind, readAppearance, readThemeSetting, themeUpdateTarget } from './themeConfig';
+import { currentPaletteKind, readAppearance, themeUpdateTarget } from './themeConfig';
 import { nextExplicitTheme } from './themeSetting';
 import {
   collectLocalResourceRoots,
@@ -136,7 +136,6 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
       webviewPanel.webview,
       this.context.extensionUri,
       currentPaletteKind(),
-      readThemeSetting(),
     );
   }
 

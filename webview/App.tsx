@@ -19,7 +19,9 @@ import {
   outlineTreeFromMarkdown,
   outlineUsesOverlay,
   parseOutlineHeadings,
+  pruneCollapsedFroms,
   shouldWindowCloseOutlineOverlay,
+  toggleCollapsedFrom,
   type OutlineNode,
 } from './outline';
 import { hostFailureNotice } from './notices';
@@ -59,6 +61,7 @@ export function App() {
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [notice, setNotice] = useState<string | undefined>();
   const [outlineNodes, setOutlineNodes] = useState<OutlineNode[]>([]);
+  const [collapsedFroms, setCollapsedFroms] = useState<Set<number>>(() => new Set());
   const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
   const [formatActive, setFormatActive] = useState<FormatActiveMap>({});
   const generationRef = useRef(0);
@@ -129,7 +132,9 @@ export function App() {
           const wide = typeof matchMedia === 'function' && matchMedia('(min-width: 900px)').matches;
           setOutlineOpen(defaultOutlineOpen(message.appearance.outlineEnabled, wide));
           outlineSourceRef.current = mount.text;
-          setOutlineNodes(outlineTreeFromMarkdown(mount.text));
+          const tree = outlineTreeFromMarkdown(mount.text);
+          setOutlineNodes(tree);
+          setCollapsedFroms((prev) => pruneCollapsedFroms(prev, tree));
           setSession({
             uri: message.uri,
             text: mount.text,
@@ -263,7 +268,9 @@ export function App() {
       outlineSourceRef.current = text;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        setOutlineNodes(outlineTreeFromMarkdown(text));
+        const tree = outlineTreeFromMarkdown(text);
+        setOutlineNodes(tree);
+        setCollapsedFroms((prev) => pruneCollapsedFroms(prev, tree));
       }, outlineDebounceMs(text.length));
     });
     return () => {
@@ -431,12 +438,13 @@ export function App() {
     setOutlineOpen((open) => !open);
   }, []);
 
-  const onOutlineSelect = useCallback(
-    (from: number) => {
-      revealOffset(from, !readOnlyRef.current);
-    },
-    [],
-  );
+  const onOutlineSelect = useCallback((from: number) => {
+    revealOffset(from, !readOnlyRef.current);
+  }, []);
+
+  const onToggleOutlineNode = useCallback((from: number) => {
+    setCollapsedFroms((prev) => toggleCollapsedFrom(prev, from));
+  }, []);
 
   if (!session) {
     return <div className="app" />;
@@ -448,7 +456,8 @@ export function App() {
     editorWidthPx: shellWidth,
   });
   const showOutline = placement.show;
-  const outlineOverlay = placement.show && placement.mount === 'overlay';
+  const outlineOverlay = placement.mount === 'overlay';
+  const outlineCollapsed = placement.show && !placement.expanded;
   const showFormats = !readOnly && (toolbarEnabled || formatStripOpen);
   const showChrome = readOnly || outlineEnabled || !readOnly;
   const chromeQuiet = !readOnly && !toolbarEnabled && !formatStripOpen;
@@ -486,7 +495,7 @@ export function App() {
             <Toolbar
               readOnly={readOnly}
               showFormats={showFormats}
-              outlineOpen={showOutline}
+              outlineOpen={placement.expanded}
               outlineEnabled={outlineEnabled}
               formatActive={formatActive}
               onFormat={onFormat}
@@ -498,7 +507,15 @@ export function App() {
       <div className={`editor-frame${outlineOverlay ? ' outline-overlay' : ''}`} ref={shellRef}>
         <div className="editor-shell">
           {showOutline && !outlineOverlay ? (
-            <OutlinePanel nodes={outlineNodes} activeFrom={activeHeadingFrom} onSelect={onOutlineSelect} />
+            <OutlinePanel
+              nodes={outlineNodes}
+              activeFrom={activeHeadingFrom}
+              collapsed={outlineCollapsed}
+              collapsedFroms={collapsedFroms}
+              onSelect={onOutlineSelect}
+              onToggleSidebar={onToggleOutline}
+              onToggleNode={onToggleOutlineNode}
+            />
           ) : null}
           <AtomicCodeMirrorEditor
             documentId={session.uri}
@@ -515,7 +532,7 @@ export function App() {
           <button
             type="button"
             className="outline-backdrop"
-            aria-label="Close outline"
+            aria-label="Hide outline"
             onClick={() => setOutlineOpen(false)}
           />
         ) : null}
@@ -524,7 +541,10 @@ export function App() {
             nodes={outlineNodes}
             activeFrom={activeHeadingFrom}
             overlay
+            collapsedFroms={collapsedFroms}
             onSelect={onOutlineSelect}
+            onToggleSidebar={onToggleOutline}
+            onToggleNode={onToggleOutlineNode}
           />
         ) : null}
       </div>

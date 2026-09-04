@@ -14,18 +14,17 @@ export function workbenchIsLightFromBody(body: { classList: { contains(name: str
 export function applyPaletteToRoot(
   root: { classList: { add(name: string): void; toggle(name: string, force?: boolean): boolean }; dataset: { theme?: string } },
   palette: PaletteKind,
-  followWorkbench = false,
 ): void {
   root.classList.add('theme-plannotator');
   root.classList.toggle('light', palette === 'light');
-  root.classList.toggle('theme-follow', followWorkbench);
+  root.classList.toggle('theme-follow', false);
   root.dataset.theme = palette;
 }
 
 export function appearanceCssVars(settings: AppearanceSettings): Record<string, string | null> {
   return {
     '--atomic-user-font': settings.fontFamily || null,
-    '--atomic-user-size': `${settings.fontSize}px`,
+    '--atomic-user-size': settings.fontSize != null ? `${settings.fontSize}px` : null,
     '--atomic-user-leading': String(settings.lineHeight),
     '--atomic-user-measure': `${settings.contentWidthCh}ch`,
   };
@@ -52,7 +51,7 @@ export function applyAppearance(settings: AppearanceSettings): void {
 
 export function applyThemeSetting(setting: ThemeSetting): PaletteKind {
   const palette = resolvePaletteKind(setting, workbenchIsLightFromBody(document.body));
-  applyPaletteToRoot(document.documentElement, palette, setting === 'followVscode');
+  applyPaletteToRoot(document.documentElement, palette);
   return palette;
 }
 

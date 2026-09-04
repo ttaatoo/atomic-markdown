@@ -2,9 +2,12 @@
 
 ## 0.1.0
 
-- Critique pass: outline overlay drawer below ~640px (no dead Show Outline); YAML frontmatter / `---` no longer invent outline headings; image save failures show an inline notice; `prefers-reduced-motion`; larger toolbar hit targets; toolbar off by default with a Format reveal; quieter accent and follow-workbench neutrals.
-- Narrow outline mounts as a floating drawer outside the writing-row flex (not a crushing split pane); Escape/backdrop close.
-- Visual fidelity: bundle Inter Variable / Geist Mono Variable; writing surface and chrome (outline, toolbar, reading chip) use Plannotator tokens and prose treatment without replacing Atomic Editor.
+- Feishu-style outline (目录): expanded left rail **pushes** and resizes the writing column; collapse to a thin icon rail; nested heading twisties persist for the session; chrome Hide/Show Outline always works. Overlay only as last resort at ≤240px.
+- Workbench fonts by default: chrome and body use `--vscode-font-family` / `--vscode-editor-font-family` and workbench/editor size. Bundled Inter / Geist Mono stay optional via `fontFamily`. Chrome density matches VS Code side bars.
+- Colors are the exact Plannotator default dark/light tokens from `packages/ui/themes/plannotator.css` (no muted/desaturated primary, no `theme-follow` workbench-neutral remap). `followVscode` only picks which palette.
+- Critique pass: YAML frontmatter / `---` no longer invent outline headings; image save failures show an inline notice; `prefers-reduced-motion`; toolbar off by default with a Format reveal.
+- Last-resort outline overlay (extreme narrow width) sits outside the writing-row flex; Escape/backdrop close.
+- Visual fidelity: optional Inter Variable / Geist Mono Variable; writing surface uses exact Plannotator tokens and prose treatment without replacing Atomic Editor.
 - UX polish: mermaid scroll no longer blanks the webview; Open with Atomic replaces the current tab; SVG toolbar with pressed states; outline highlight follows the visible heading while scrolling; Ctrl/Cmd+F opens Atomic find (not the sidebar); Escape closes find only while it is open; reading-mode chip.
 - Editing reliability: per-panel sessions (`supportsMultipleEditorsPerDocument`), per-document serialized applies, versioned one-shot echo tickets, abort+catch-up when the document moves before `applyEdit`.
 - Image paste/drop: extension-host `workspace.fs` save under `atomicMarkdown.images.directory` (default `assets`), relative markdown insert via a CM6 transaction.

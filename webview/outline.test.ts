@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import {
   defaultOutlineOpen,
   nestOutline,
-  outlineAutoCollapsed,
   outlineDebounceMs,
   outlinePanelShouldRender,
   outlinePlacement,
@@ -14,7 +13,9 @@ import {
   outlineUsesOverlay,
   parseAtxHeadingLine,
   parseOutlineHeadings,
+  pruneCollapsedFroms,
   shouldWindowCloseOutlineOverlay,
+  toggleCollapsedFrom,
 } from './outline.ts';
 
 describe('parseOutlineHeadings', () => {
@@ -103,27 +104,68 @@ describe('parseOutlineHeadings', () => {
     assert.equal(parseAtxHeadingLine('#')?.text, '');
   });
 
-  it('keeps a reopenable overlay outline on a narrow editor width', () => {
-    assert.equal(outlineAutoCollapsed(900), false);
-    assert.equal(outlineAutoCollapsed(641), false);
-    assert.equal(outlineAutoCollapsed(640), true);
-    assert.equal(outlineUsesOverlay(350), true);
-    assert.equal(outlineUsesOverlay(500), true);
+  it('uses a Feishu push rail by default and overlays only at extreme width', () => {
+    assert.equal(outlineUsesOverlay(350), false);
+    assert.equal(outlineUsesOverlay(500), false);
+    assert.equal(outlineUsesOverlay(240), true);
+    assert.equal(outlineUsesOverlay(200), true);
+    assert.equal(outlineUsesOverlay(241), false);
     assert.equal(outlineUsesOverlay(800), false);
-    assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 800 }), true);
-    assert.equal(outlinePanelShouldRender({ enabled: true, open: true, editorWidthPx: 500 }), true);
-    assert.equal(outlinePanelShouldRender({ enabled: true, open: false, editorWidthPx: 800 }), false);
-    assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 400 }), {
+    assert.equal(outlinePanelShouldRender({ enabled: true }), true);
+    assert.equal(outlinePanelShouldRender({ enabled: false }), false);
+    assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 350 }), {
       show: true,
-      mount: 'overlay',
+      expanded: true,
+      mount: 'rail',
+    });
+    assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 500 }), {
+      show: true,
+      expanded: true,
+      mount: 'rail',
     });
     assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 900 }), {
       show: true,
+      expanded: true,
       mount: 'rail',
+    });
+    assert.deepEqual(outlinePlacement({ enabled: true, open: true, editorWidthPx: 240 }), {
+      show: true,
+      expanded: true,
+      mount: 'overlay',
+    });
+    assert.deepEqual(outlinePlacement({ enabled: true, open: false, editorWidthPx: 900 }), {
+      show: true,
+      expanded: false,
+      mount: 'icon',
+    });
+    assert.deepEqual(outlinePlacement({ enabled: false, open: true, editorWidthPx: 900 }), {
+      show: false,
+      expanded: false,
+      mount: 'icon',
     });
     assert.equal(shouldWindowCloseOutlineOverlay({ findOpen: true, overlayOpen: true }), false);
     assert.equal(shouldWindowCloseOutlineOverlay({ findOpen: false, overlayOpen: true }), true);
     assert.equal(shouldWindowCloseOutlineOverlay({ findOpen: false, overlayOpen: false }), false);
+  });
+
+  it('toggles nested heading collapse and prunes stale froms', () => {
+    const tree = outlineTreeFromMarkdown('# Parent\n## Child\n### Deep\n# Other\n');
+    const parentFrom = tree[0].from;
+    const childFrom = tree[0].children[0].from;
+    let collapsed = new Set<number>();
+    collapsed = toggleCollapsedFrom(collapsed, parentFrom);
+    assert.equal(collapsed.has(parentFrom), true);
+    collapsed = toggleCollapsedFrom(collapsed, parentFrom);
+    assert.equal(collapsed.has(parentFrom), false);
+    collapsed = toggleCollapsedFrom(collapsed, parentFrom);
+    collapsed = toggleCollapsedFrom(collapsed, childFrom);
+    collapsed.add(9999);
+    const pruned = pruneCollapsedFroms(collapsed, tree);
+    assert.equal(pruned.has(parentFrom), true);
+    assert.equal(pruned.has(childFrom), true);
+    assert.equal(pruned.has(9999), false);
+    const afterDrop = pruneCollapsedFroms(pruned, outlineTreeFromMarkdown('# Other\n'));
+    assert.equal(afterDrop.size, 0);
   });
 });
 
@@ -136,19 +178,20 @@ describe('outline panel CSS', () => {
     assert.equal(/display:\s*none/.test(css), false);
   });
 
-  it('takes the narrow outline out of the writing-row flex flow', () => {
+  it('pushes a real sidebar rail and keeps overlay as last resort only', () => {
     assert.match(css, /\.editor-frame\s*\{/);
+    assert.match(css, /\.outline-panel \{[\s\S]*flex:\s*0 0 15\.5rem/);
+    assert.match(css, /\.outline-panel\.outline-panel-collapsed \{[\s\S]*flex:\s*0 0 2rem/);
+    assert.match(css, /\.outline-twisty/);
+    assert.match(css, /\.outline-icon-btn/);
+    assert.equal(/@container atomic-editor \(max-width: 640px\)/.test(css), false);
+    assert.match(css, /@container atomic-editor \(max-width: 720px\)/);
     assert.match(css, /\.outline-panel\.outline-panel-overlay/);
     const overlayAt = css.indexOf('.outline-panel.outline-panel-overlay');
     const overlayBlock = css.slice(overlayAt, css.indexOf('}', overlayAt) + 1);
     assert.match(overlayBlock, /position:\s*absolute/);
     assert.match(overlayBlock, /flex:\s*none/);
     assert.equal(/flex:\s*0 1 15\.5rem/.test(overlayBlock), false);
-    assert.match(css, /@container atomic-editor \(max-width: 640px\)/);
-    const queryAt = css.indexOf('@container atomic-editor (max-width: 640px)');
-    const queryBlock = css.slice(queryAt, queryAt + 280);
-    assert.match(queryBlock, /\.editor-shell > \.outline-panel/);
-    assert.match(queryBlock, /position:\s*absolute/);
   });
 
   it('styles the empty state and the live current-heading mark', () => {

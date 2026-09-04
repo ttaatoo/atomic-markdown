@@ -212,44 +212,83 @@ export function defaultOutlineOpen(enabled: boolean, wideEditor: boolean): boole
   return enabled && wideEditor;
 }
 
-/** Below this width the outline becomes an overlay drawer instead of a side rail. */
-export const OUTLINE_COLLAPSE_MAX_PX = 640;
+/** Last-resort overlay only. Default path is a push sidebar (Feishu-style). */
+export const OUTLINE_OVERLAY_MAX_PX = 240;
 
-export function outlineAutoCollapsed(editorWidthPx: number): boolean {
-  return editorWidthPx <= OUTLINE_COLLAPSE_MAX_PX;
-}
-
-/** Narrow shell: keep TOC as a drawer the user can reopen — never a dead toggle. */
 export function outlineUsesOverlay(editorWidthPx: number): boolean {
-  return outlineAutoCollapsed(editorWidthPx);
+  return editorWidthPx > 0 && editorWidthPx <= OUTLINE_OVERLAY_MAX_PX;
 }
 
-export function outlinePanelShouldRender(input: {
-  enabled: boolean;
-  open: boolean;
-  editorWidthPx: number;
-}): boolean {
-  return input.enabled && input.open;
+export function outlinePanelShouldRender(input: { enabled: boolean }): boolean {
+  return input.enabled;
 }
 
-export type OutlineMount = 'rail' | 'overlay';
+export type OutlineMount = 'rail' | 'icon' | 'overlay';
 
-/** Where the open outline lives. Overlay is never a flex column in the writing row. */
+export interface OutlinePlacement {
+  show: boolean;
+  expanded: boolean;
+  mount: OutlineMount;
+}
+
+/**
+ * Feishu-style TOC: enabled always shows a rail.
+ * `open` expands the full tree (push layout). Closed is a thin icon rail.
+ * Overlay only when expanded and the frame is extremely narrow.
+ */
 export function outlinePlacement(input: {
   enabled: boolean;
   open: boolean;
   editorWidthPx: number;
-}): { show: false } | { show: true; mount: OutlineMount } {
-  if (!outlinePanelShouldRender(input)) {
-    return { show: false };
+}): OutlinePlacement {
+  if (!input.enabled) {
+    return { show: false, expanded: false, mount: 'icon' };
   }
-  return {
-    show: true,
-    mount: outlineUsesOverlay(input.editorWidthPx) ? 'overlay' : 'rail',
-  };
+  if (!input.open) {
+    return { show: true, expanded: false, mount: 'icon' };
+  }
+  if (outlineUsesOverlay(input.editorWidthPx)) {
+    return { show: true, expanded: true, mount: 'overlay' };
+  }
+  return { show: true, expanded: true, mount: 'rail' };
 }
 
-/** Escape closes a narrow drawer only when find is not already consuming Escape. */
+/** Escape closes a last-resort overlay only when find is not consuming Escape. */
 export function shouldWindowCloseOutlineOverlay(input: { findOpen: boolean; overlayOpen: boolean }): boolean {
   return !input.findOpen && input.overlayOpen;
+}
+
+export function toggleCollapsedFrom(collapsed: ReadonlySet<number>, from: number): Set<number> {
+  const next = new Set(collapsed);
+  if (next.has(from)) {
+    next.delete(from);
+  } else {
+    next.add(from);
+  }
+  return next;
+}
+
+export function collectExpandableFroms(nodes: readonly OutlineNode[]): Set<number> {
+  const keys = new Set<number>();
+  const walk = (list: readonly OutlineNode[]) => {
+    for (const node of list) {
+      if (node.children.length > 0) {
+        keys.add(node.from);
+        walk(node.children);
+      }
+    }
+  };
+  walk(nodes);
+  return keys;
+}
+
+export function pruneCollapsedFroms(collapsed: ReadonlySet<number>, nodes: readonly OutlineNode[]): Set<number> {
+  const valid = collectExpandableFroms(nodes);
+  const next = new Set<number>();
+  for (const from of collapsed) {
+    if (valid.has(from)) {
+      next.add(from);
+    }
+  }
+  return next;
 }

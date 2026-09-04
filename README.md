@@ -54,7 +54,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 
 - Inline live preview (syntax hides on inactive lines)
 - Optional formatting toolbar (off by default; a single **Format** control reveals it). Shortcuts still work: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link. Set `atomicMarkdown.toolbar.enabled` to always show the strip
-- Heading outline (目录结构) inside the webview — ATX `#`–`######` and setext H1/H2; highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
+- Heading outline (目录) as a Feishu-style left sidebar that resizes the writing column — ATX `#`–`######` and setext H1/H2; nested headings collapse with twisties; collapse the rail to a thin icon strip; highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
 - Paste or drop png/jpeg/gif/webp/svg images; the extension host saves them under `atomicMarkdown.images.directory` (default `assets` next to the Markdown file) and inserts a relative `![]()` at the caret
 - WYSIWYG tables
 - Clickable task checkboxes (`- [ ]` / `- [x]`)
@@ -63,7 +63,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 - Reading mode (editor title book/pencil icons plus an in-webview **Reading** chip, or **Atomic Markdown: Toggle Reading Mode**)
 - Find inside the editor (`Cmd/Ctrl+F` while Atomic is active, or the title search icon). **Escape** closes the find bar while it is open and is not swallowed when it is closed
 - Relative images via `webview.asWebviewUri`; `http`/`https` images load as-is. `data:`, `javascript:`, and `file:` image URIs are rejected.
-- Writing surface and chrome use Plannotator’s default dark/light oklch tokens and prose treatment (Inter / Geist Mono bundled; generous measure; polished headings, quotes, tables, code, tasks). This is not a Plannotator clone — Atomic Editor stays the engine. Typography settings (`fontFamily`, `fontSize`, `lineHeight`, `contentWidth`) apply live without remounting
+- Writing surface colors are Plannotator’s exact default dark/light oklch tokens (not muted, not VS Code editor colors). Chrome and default body type use the workbench / editor font tokens so the pane matches Explorer and tabs. Bundled Inter / Geist Mono apply only if you set `fontFamily`. Typography settings apply live without remounting. This is not a Plannotator clone — Atomic Editor stays the engine.
 
 http(s) links open externally. Same-workspace `.md` links use `vscode.open` (usually the default text editor).
 
@@ -89,21 +89,23 @@ These shortcuts are scoped with `when: activeCustomEditorId == ttaatoo.atomicMar
 
 ## Outline
 
-`atomicMarkdown.outline.enabled` (default `true`) allows a collapsible heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Toggle it from the editor title or the toolbar.
+`atomicMarkdown.outline.enabled` (default `true`) allows a Feishu-style heading outline on the left of the webview. It opens by default when the editor is wide enough (~900px). Hide/Show Outline in the chrome and the panel chevron always toggle it (no dead control).
 
-Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The highlight follows the heading at the **visible viewport top** as you scroll (a leftover caret after an outline click does not pin it). The outline updates as you type (debounced on large documents). It never mutates the file. A note with no headings shows a styled empty state. Below ~640px the rail becomes an overlay drawer you can reopen (never a dead Show Outline button). YAML frontmatter and `---` thematic breaks are not treated as headings.
+The expanded rail is a **push sidebar**: it takes a fixed column and **resizes the writing surface** instead of covering it. Collapse it to a thin icon rail; expand again without losing scroll or caret. Nested headings have twisties (session-persisted). Overlay is last resort only when the frame is extremely narrow (≤240px). YAML frontmatter and `---` thematic breaks are not treated as headings.
+
+Click a heading to reveal it. In edit mode the caret moves to the heading; in reading mode the view scrolls without forcing source chrome. The highlight follows the heading at the **visible viewport top** as you scroll (a leftover caret after an outline click does not pin it). The outline updates as you type (debounced on large documents). It never mutates the file. A note with no headings shows a styled empty state.
 
 ## Theme and typography
 
-The writing surface uses a restrained accent on [Plannotator](https://github.com/backnotprop/plannotator)’s default dark and light oklch tokens. `followVscode` borrows workbench editor/sidebar neutrals so a light paper card does not appear inside a dark IDE. Atomic Markdown is not Plannotator; see [PRODUCT.md](PRODUCT.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+The writing surface uses the exact default dark and light oklch tokens from [Plannotator](https://github.com/backnotprop/plannotator) `packages/ui/themes/plannotator.css`. `followVscode` only chooses which of those two palettes matches the workbench kind — it does not remap the canvas to VS Code editor colors or desaturate primary/accent. Atomic Markdown is not Plannotator; see [PRODUCT.md](PRODUCT.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Empty `fontFamily` resolves to bundled **Inter Variable** / **Geist Mono Variable** (latin + latin-ext, system fallbacks). `fontSize` (default 17), `lineHeight` (1.7), and `contentWidth` (70ch) still override measure and size.
+Empty `fontFamily` and unset `fontSize` follow the VS Code workbench / editor font tokens (`--vscode-font-family`, `--vscode-editor-font-family`, `--vscode-editor-font-size` / `--vscode-font-size`). Bundled **Inter Variable** / **Geist Mono Variable** remain available if you name them in `fontFamily`. `lineHeight` (1.7) and `contentWidth` (70ch) still override measure.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `atomicMarkdown.theme` | `followVscode` | `followVscode` uses workbench neutrals plus a quiet accent. `dark` / `light` use Plannotator paper. |
-| `atomicMarkdown.fontFamily` | `""` | Empty uses bundled Inter / Geist Mono with system fallbacks. |
-| `atomicMarkdown.fontSize` | `17` | Clamped 12–28. |
+| `atomicMarkdown.theme` | `followVscode` | Picks Plannotator dark or light from the workbench kind. `dark` / `light` lock one palette. |
+| `atomicMarkdown.fontFamily` | `""` | Empty uses the workbench font. Name `Inter Variable` (or any stack) to override. |
+| `atomicMarkdown.fontSize` | `null` | Empty follows the editor/workbench size. Clamped 12–28 when set. |
 | `atomicMarkdown.lineHeight` | `1.7` | Clamped 1.2–2.4. |
 | `atomicMarkdown.contentWidth` | `70` | Column measure in `ch`, clamped 40–120. |
 
