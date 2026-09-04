@@ -81,7 +81,7 @@ SVG files on disk are treated as untrusted image data: they are displayed with `
 
 ## Formatting and shortcuts
 
-There is no top Format strip. In edit mode, selecting text shows a compact floating bar (bold, italic, strikethrough, inline code, link) near the selection. It hides when the selection collapses, in reading mode, or when focus is on a real chrome control. Pressed state reflects cheap wrap detection. Tooltips include the shortcuts.
+There is no top Format strip. In edit mode, selecting text shows a compact CodeMirror tooltip bar (bold, italic, strikethrough, inline code, link) near the selection. It hides when the selection collapses or in reading mode. Pressed state reflects cheap wrap detection. Tooltips include the shortcuts.
 
 **Cmd/Ctrl+B**, **I**, and **K** still format with no chrome. The Command Palette **Format Selection** action still runs heading cycle and list toggles (none → H1 → H2 → H3 → none; bullet / numbered / task).
 

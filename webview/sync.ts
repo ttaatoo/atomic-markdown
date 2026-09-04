@@ -3,6 +3,7 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { findEscapeKeymap, findOpenTracker } from './findEscapeKeymap';
 import { applyFormat, insertSnippet, type FormatAction } from './format';
 import { mermaidBlocks } from './mermaidBlocks';
+import { selectionFormatTooltip } from './selectionFormatTooltip';
 
 let view: EditorView | null = null;
 let applyingExternal = false;
@@ -49,10 +50,8 @@ export const captureEditorView = ViewPlugin.fromClass(
           listener(text);
         }
       }
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        for (const listener of viewUpdateListeners) {
-          listener(update.view);
-        }
+      for (const listener of viewUpdateListeners) {
+        listener(update.view);
       }
     }
 
@@ -189,4 +188,10 @@ export function revealOffset(offset: number, moveCaret: boolean): boolean {
   return true;
 }
 
-export const EXTRA_EXTENSIONS = [captureEditorView, mermaidBlocks(), findEscapeKeymap(), findOpenTracker];
+export const EXTRA_EXTENSIONS = [
+  captureEditorView,
+  mermaidBlocks(),
+  findEscapeKeymap(),
+  findOpenTracker,
+  selectionFormatTooltip(),
+];

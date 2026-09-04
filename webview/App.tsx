@@ -4,10 +4,9 @@ import {
 } from '@atomic-editor/editor';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppearanceSettings } from '../src/appearance.ts';
-import type { FormatAction, HostToWebview } from '../src/protocol';
+import type { HostToWebview } from '../src/protocol';
 import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
-import { detectFormatActive, formatActiveEqual, type FormatActiveMap } from './formatActive';
 import { isFindOpenShortcut, shouldWindowCloseFind } from './findEscape';
 import { onFindOpenChange } from './findEscapeKeymap';
 import { CODE_LANGUAGES } from './languages';
@@ -27,23 +26,8 @@ import {
 import { hostFailureNotice } from './notices';
 import { headingAtScrollPosition, visibleTopDocPos } from './outlineActive';
 import { fileToBase64, imageFilesFromDataTransfer, inferImageMime, nextImageRequestId } from './pasteImages';
-import { SelectionFormatBar } from './SelectionFormatBar';
-import {
-  SELECTION_BAR_FALLBACK_HEIGHT,
-  SELECTION_BAR_FALLBACK_WIDTH,
-  anchorFromDomPositions,
-  contentDefaultAnchor,
-  domSelectionAnchor,
-  isForeignChromeFocus,
-  isSelectionRefreshKey,
-  readCoordsAtPos,
-  selectionBarFromSources,
-  selectionLayerAnchor,
-  type SelectionBarBox,
-} from './selectionBar';
 import {
   applyExternalMarkdown,
-  currentEditorView,
   dispatchFormat,
   EXTRA_EXTENSIONS,
   insertSnippetAtSelection,
@@ -74,8 +58,6 @@ export function App() {
   const [outlineNodes, setOutlineNodes] = useState<OutlineNode[]>([]);
   const [collapsedFroms, setCollapsedFroms] = useState<Set<number>>(() => new Set());
   const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
-  const [formatActive, setFormatActive] = useState<FormatActiveMap>({});
-  const [selectionBar, setSelectionBar] = useState<SelectionBarBox | null>(null);
   const generationRef = useRef(0);
   const pendingMarkdownRef = useRef<HostMarkdown | undefined>(undefined);
   const imageOptionsRef = useRef<ImageResolveOptions>({});
@@ -88,8 +70,6 @@ export function App() {
   const shellRef = useRef<HTMLDivElement | null>(null);
   const shellWidthRef = useRef(0);
   const [shellWidth, setShellWidth] = useState(0);
-  const pointerOnBarRef = useRef(false);
-  const selectionBarElRef = useRef<HTMLDivElement | null>(null);
 
   readOnlyRef.current = readOnly;
   outlineOpenRef.current = outlineOpen;
@@ -235,12 +215,6 @@ export function App() {
   }, [readOnly, session]);
 
   useEffect(() => {
-    if (readOnly) {
-      setSelectionBar(null);
-    }
-  }, [readOnly]);
-
-  useEffect(() => {
     const root = document.getElementById('root');
     if (!root) {
       return;
@@ -311,133 +285,11 @@ export function App() {
       const headingFrom = headingAtScrollPosition(headings, visibleTopDocPos(current));
       setActiveHeadingFrom((prev) => (prev === headingFrom ? prev : headingFrom));
     };
-    const syncSelectionBar = (current: {
-      hasFocus: boolean;
-      dom: Element;
-      scrollDOM?: Element;
-      contentDOM?: Element;
-      coordsAtPos(pos: number, side?: -1 | 1): { top: number; bottom: number; left: number; right: number } | null;
-      domAtPos?(pos: number): { node: Node; offset: number };
-      state: { selection: { main: { from: number; to: number; empty: boolean } }; doc: { toString(): string } };
-    }) => {
-      try {
-        const sel = current.state.selection.main;
-        try {
-          const nextActive = detectFormatActive(current.state.doc.toString(), sel.from, sel.to);
-          setFormatActive((prev) => (formatActiveEqual(prev, nextActive) ? prev : nextActive));
-        } catch {
-          // Pressed-state detection must never block the bar.
-        }
-        const barEl = selectionBarElRef.current;
-        const active = document.activeElement;
-        let start: ReturnType<typeof readCoordsAtPos> = null;
-        let end: ReturnType<typeof readCoordsAtPos> = null;
-        try {
-          start = readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.from, 1);
-        } catch {
-          start = null;
-        }
-        try {
-          end = readCoordsAtPos((pos, side) => current.coordsAtPos(pos, side), sel.to, -1);
-        } catch {
-          end = null;
-        }
-        let fromDom: ReturnType<typeof anchorFromDomPositions> = null;
-        try {
-          if (current.domAtPos) {
-            fromDom = anchorFromDomPositions(current.domAtPos(sel.from), current.domAtPos(sel.to), () =>
-              document.createRange(),
-            );
-          }
-        } catch {
-          fromDom = null;
-        }
-        const layer =
-          selectionLayerAnchor(current.scrollDOM ?? null) ?? selectionLayerAnchor(current.dom);
-        const windowSel = domSelectionAnchor(window.getSelection(), current.dom);
-        const contentDefault = contentDefaultAnchor(current.contentDOM?.getBoundingClientRect());
-        const next = selectionBarFromSources({
-          flags: {
-            readOnly: readOnlyRef.current,
-            selectionEmpty: sel.empty,
-            focusOnForeignChrome: isForeignChromeFocus(active),
-          },
-          start,
-          end,
-          fallbacks: [layer, fromDom, windowSel, contentDefault],
-          viewport: { width: window.innerWidth, height: window.innerHeight },
-          bar: {
-            width: barEl?.offsetWidth || SELECTION_BAR_FALLBACK_WIDTH,
-            height: barEl?.offsetHeight || SELECTION_BAR_FALLBACK_HEIGHT,
-          },
-        });
-        setSelectionBar((prev) => {
-          if (!next && !prev) {
-            return prev;
-          }
-          if (next && prev && Math.abs(next.top - prev.top) < 0.5 && Math.abs(next.left - prev.left) < 0.5) {
-            return prev;
-          }
-          return next;
-        });
-      } catch {
-        // Last resort: still try to mount at the safe default if the selection is live.
-        const view = currentEditorView();
-        const sel = view?.state.selection.main;
-        if (view && sel && !sel.empty && !readOnlyRef.current) {
-          setSelectionBar((prev) => prev ?? { top: 48, left: 96 });
-        }
-      }
-    };
-    const unsubUpdate = onEditorViewUpdate((current) => {
-      syncOutline(current);
-      syncSelectionBar(current);
-    });
-    const unsubScroll = onEditorScroll((current) => {
-      syncOutline(current);
-      syncSelectionBar(current);
-    });
-    const refreshBar = () => {
-      const current = currentEditorView();
-      if (current) {
-        syncSelectionBar(current);
-      }
-    };
-    let selectionRaf = 0;
-    const refreshBarSoon = () => {
-      if (selectionRaf) {
-        return;
-      }
-      selectionRaf = window.requestAnimationFrame(() => {
-        selectionRaf = 0;
-        refreshBar();
-      });
-    };
-    const onMouseUp = () => refreshBarSoon();
-    const onKeyUp = (event: KeyboardEvent) => {
-      if (isSelectionRefreshKey(event.key, event.shiftKey)) {
-        refreshBarSoon();
-      }
-    };
-    const onSelectionChange = () => refreshBarSoon();
-    window.addEventListener('resize', refreshBarSoon);
-    window.addEventListener('focusin', refreshBarSoon);
-    window.addEventListener('focusout', refreshBarSoon);
-    document.addEventListener('mouseup', onMouseUp, true);
-    document.addEventListener('keyup', onKeyUp, true);
-    document.addEventListener('selectionchange', onSelectionChange);
+    const unsubUpdate = onEditorViewUpdate(syncOutline);
+    const unsubScroll = onEditorScroll(syncOutline);
     return () => {
       unsubUpdate();
       unsubScroll();
-      if (selectionRaf) {
-        window.cancelAnimationFrame(selectionRaf);
-      }
-      window.removeEventListener('resize', refreshBarSoon);
-      window.removeEventListener('focusin', refreshBarSoon);
-      window.removeEventListener('focusout', refreshBarSoon);
-      document.removeEventListener('mouseup', onMouseUp, true);
-      document.removeEventListener('keyup', onKeyUp, true);
-      document.removeEventListener('selectionchange', onSelectionChange);
     };
   }, [session]);
 
@@ -569,12 +421,6 @@ export function App() {
     vscodeApi.postMessage({ type: 'openLink', href: url });
   }, []);
 
-  const onFormat = useCallback((action: FormatAction) => {
-    if (!readOnlyRef.current) {
-      dispatchFormat(action);
-    }
-  }, []);
-
   const onToggleOutline = useCallback(() => {
     setOutlineOpen((open) => !open);
   }, []);
@@ -654,21 +500,6 @@ export function App() {
           />
         ) : null}
       </div>
-      {selectionBar && !readOnly ? (
-        <SelectionFormatBar
-          top={selectionBar.top}
-          left={selectionBar.left}
-          barRef={selectionBarElRef}
-          formatActive={formatActive}
-          onFormat={onFormat}
-          onPointerEnter={() => {
-            pointerOnBarRef.current = true;
-          }}
-          onPointerLeave={() => {
-            pointerOnBarRef.current = false;
-          }}
-        />
-      ) : null}
     </div>
   );
 }

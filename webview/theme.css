@@ -451,8 +451,8 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   color: var(--foreground, var(--vscode-editor-foreground));
 }
 
+.cm-tooltip.selection-format-bar,
 .selection-format-bar {
-  position: fixed;
   z-index: 50;
   pointer-events: auto;
   display: flex;
