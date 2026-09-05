@@ -53,7 +53,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 ## Features (v0.1)
 
 - Inline live preview (syntax hides on inactive lines)
-- No top format strip. Select text in edit mode to get a compact floating bar (bold / italic / strike / code / link). Shortcuts still work with no chrome: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link
+- No top format strip. Select text to get a compact floating bar (bold / italic / strike / code / link in edit mode, plus **Add to Chat** / **Add Comment**). Shortcuts still work with no chrome: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link
 - Heading outline (目录) as a Feishu-style left sidebar that resizes the writing column — ATX `#`–`######` and setext H1/H2; nested headings collapse with twisties; collapse the rail to a thin icon strip from the panel itself (no top-bar outline control); highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
 - Paste or drop png/jpeg/gif/webp/svg images; the extension host saves them under `atomicMarkdown.images.directory` (default `assets` next to the Markdown file) and inserts a relative `![]()` at the caret
 - WYSIWYG tables
@@ -81,7 +81,7 @@ SVG files on disk are treated as untrusted image data: they are displayed with `
 
 ## Formatting and shortcuts
 
-There is no top Format strip. In edit mode, selecting text shows a compact CodeMirror tooltip bar (bold, italic, strikethrough, inline code, link) near the selection. It hides when the selection collapses or in reading mode. Pressed state reflects cheap wrap detection. Tooltips include the shortcuts.
+There is no top Format strip. Selecting text shows a compact CodeMirror tooltip: format icons in edit mode, plus **Add to Chat** and **Add Comment**. Add Comment expands a small composer (Cancel / Send). Escape closes the composer first. The host opens Cursor Chat with a structured prompt (`Comment`, `File: path:lines`, fenced selection) via `workbench.action.chat.open`, or clipboard + `composer.newAgentChat` + paste if that command is missing. This fills the chat input; it does not create native Monaco reference chips. Pressed state reflects cheap wrap detection. Format tooltips include the shortcuts.
 
 **Cmd/Ctrl+B**, **I**, and **K** still format with no chrome. The Command Palette **Format Selection** action still runs heading cycle and list toggles (none → H1 → H2 → H3 → none; bullet / numbered / task).
 

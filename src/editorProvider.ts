@@ -18,7 +18,8 @@ import {
   untitledImageError,
 } from './imageSave';
 import type { HostToWebview, WebviewToHost } from './protocol';
-import { isFormatAction } from './protocol';
+import { isFormatAction, isSendToChatMessage } from './protocol';
+import { openCursorChat, planSendToChat } from './sendToChat';
 import { addSession, removeSession } from './sessionMap';
 import {
   consumeVersionedEcho,
@@ -267,7 +268,33 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
           await vscode.commands.executeCommand('setContext', CONTEXT_FIND_OPEN, message.open);
         }
         return;
+      case 'sendToChat':
+        if (!isSendToChatMessage(message)) {
+          return;
+        }
+        await this.sendSelectionToChat(document, message);
+        return;
     }
+  }
+
+  private async sendSelectionToChat(
+    document: vscode.TextDocument,
+    message: Extract<WebviewToHost, { type: 'sendToChat' }>,
+  ): Promise<void> {
+    const planned = planSendToChat({
+      mode: message.mode,
+      text: message.text,
+      from: message.from,
+      to: message.to,
+      comment: message.comment,
+      path: vscode.workspace.asRelativePath(document.uri, false),
+      documentText: document.getText(),
+    });
+    await openCursorChat(planned.prompt, {
+      getCommands: () => vscode.commands.getCommands(true),
+      executeCommand: (command, ...args) => vscode.commands.executeCommand(command, ...args),
+      writeClipboard: (text) => vscode.env.clipboard.writeText(text),
+    });
   }
 
   private async saveImage(

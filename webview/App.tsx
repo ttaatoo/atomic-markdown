@@ -8,6 +8,8 @@ import type { HostToWebview } from '../src/protocol';
 import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { isFindOpenShortcut, shouldWindowCloseFind } from './findEscape';
+import { closeCommentComposer } from './selectionFormatTooltip';
+import { setSendToChatHandler } from './sendToChat';
 import { onFindOpenChange } from './findEscapeKeymap';
 import { CODE_LANGUAGES } from './languages';
 import { OutlinePanel } from './OutlinePanel';
@@ -300,6 +302,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    setSendToChatHandler((request) => {
+      vscodeApi.postMessage({ type: 'sendToChat', ...request });
+    });
+    return () => setSendToChatHandler(undefined);
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isFindOpenShortcut({ key: event.key, ctrlOrMeta: event.ctrlKey || event.metaKey, alt: event.altKey })) {
         event.preventDefault();
@@ -308,6 +317,11 @@ export function App() {
         return;
       }
       if (event.key !== 'Escape') {
+        return;
+      }
+      if (closeCommentComposer()) {
+        event.preventDefault();
+        event.stopPropagation();
         return;
       }
       const handle = editorHandleRef.current;

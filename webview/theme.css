@@ -456,8 +456,9 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   z-index: 50;
   pointer-events: auto;
   display: flex;
-  align-items: center;
-  gap: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   padding: 3px;
   border: 1px solid var(--border, var(--vscode-widget-border));
   border-radius: var(--radius-md, var(--radius));
@@ -466,6 +467,90 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   box-shadow: 0 4px 16px color-mix(in oklch, var(--foreground, #000) 12%, transparent);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size, 13px);
+}
+
+.selection-format-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.selection-format-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.selection-format-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--border, var(--vscode-widget-border));
+}
+
+.selection-chat-btn,
+.selection-comment-cancel,
+.selection-comment-send {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--foreground, var(--vscode-editor-foreground));
+  font: inherit;
+  line-height: 1.2;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.selection-chat-btn {
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.selection-chat-btn:hover,
+.selection-comment-cancel:hover,
+.selection-comment-send:hover {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+  color: var(--foreground, var(--vscode-editor-foreground));
+}
+
+.selection-chat-btn[aria-pressed='true'],
+.selection-comment-send {
+  color: var(--primary, var(--vscode-focusBorder));
+}
+
+.selection-comment-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.selection-comment-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 2px 2px;
+  border-top: 1px solid var(--border, var(--vscode-widget-border));
+}
+
+.selection-comment-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 16rem;
+  min-height: 3.2em;
+  resize: vertical;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: var(--radius-sm, 3px);
+  padding: 6px 7px;
+  background: var(--background, var(--vscode-editor-background));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  font: inherit;
+}
+
+.selection-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .selection-format-btn {
@@ -718,7 +803,11 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 .outline-twisty:focus-visible,
 .outline-icon-btn:focus-visible,
 .outline-backdrop:focus-visible,
-.selection-format-btn:focus-visible {
+.selection-format-btn:focus-visible,
+.selection-chat-btn:focus-visible,
+.selection-comment-cancel:focus-visible,
+.selection-comment-send:focus-visible,
+.selection-comment-input:focus-visible {
   outline: 2px solid var(--ring, var(--vscode-focusBorder));
   outline-offset: 2px;
 }

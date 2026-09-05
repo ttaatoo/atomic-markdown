@@ -1,5 +1,12 @@
 import { StateField, type EditorState, type Extension } from '@codemirror/state';
-import { showTooltip, tooltips, type Tooltip, type TooltipView, type EditorView } from '@codemirror/view';
+import {
+  repositionTooltips,
+  showTooltip,
+  tooltips,
+  type Tooltip,
+  type TooltipView,
+  type EditorView,
+} from '@codemirror/view';
 import type { FormatAction } from '../src/protocol.ts';
 import { applyFormat } from './format.ts';
 import { detectFormatActive, type FormatActiveMap } from './formatActive.ts';
@@ -10,6 +17,7 @@ import {
   readCoordsAtPos,
   selectionLayerAnchor,
 } from './selectionBar.ts';
+import { requestSendToChat, selectionChatPayload } from './sendToChat.ts';
 import { formatActionTitle } from './toolbarLabels.ts';
 
 const INLINE_ICONS: Partial<Record<FormatAction, string>> = {
@@ -22,12 +30,17 @@ const INLINE_ICONS: Partial<Record<FormatAction, string>> = {
   link: '<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M8.2 11.8 6.4 13.6a2.4 2.4 0 0 0 3.4 3.4l2.4-2.4M11.8 8.2l1.8-1.8a2.4 2.4 0 1 1 3.4 3.4l-2.4 2.4M8.7 11.3l2.6-2.6"/>',
 };
 
-/** Edit-mode non-empty CM selection — no React/activeElement heuristics. */
+export function selectionMenuFlags(state: { readOnly: boolean; selection: { main: { empty: boolean } } }): {
+  show: boolean;
+  showFormat: boolean;
+} {
+  const show = !state.selection.main.empty;
+  return { show, showFormat: show && !state.readOnly };
+}
+
+/** Non-empty CM selection — format icons only in edit mode. */
 export function shouldShowFormatTooltip(state: EditorState): boolean {
-  if (state.selection.main.empty || state.readOnly) {
-    return false;
-  }
-  return true;
+  return selectionMenuFlags(state).show;
 }
 
 export function formatTooltipForState(state: EditorState): Tooltip | null {
@@ -80,18 +93,60 @@ export function dispatchSelectionFormat(view: EditorView, action: FormatAction):
   return true;
 }
 
+let composerOpen = false;
+let composerCloser: (() => boolean) | undefined;
+
+export function isCommentComposerOpen(): boolean {
+  return composerOpen;
+}
+
+export function closeCommentComposer(): boolean {
+  if (!composerOpen || !composerCloser) {
+    return false;
+  }
+  return composerCloser();
+}
+
+function registerComposerCloser(close: () => boolean): () => void {
+  composerCloser = close;
+  return () => {
+    if (composerCloser === close) {
+      composerCloser = undefined;
+      composerOpen = false;
+    }
+  };
+}
+
 export function createSelectionFormatBarElement(
   onFormat: (action: FormatAction) => void,
   active: FormatActiveMap,
   platform = '',
+  options?: {
+    showFormat?: boolean;
+    onAddToChat?: () => void;
+    onSendComment?: (comment: string) => void;
+    onComposerChange?: (open: boolean) => void;
+  },
 ): HTMLDivElement {
+  const showFormat = options?.showFormat !== false;
   const bar = document.createElement('div');
   bar.className = 'selection-format-bar';
   bar.setAttribute('role', 'toolbar');
-  bar.setAttribute('aria-label', 'Format selection');
+  bar.setAttribute('aria-label', 'Selection');
   bar.addEventListener('mousedown', (event) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('textarea, input')) {
+      return;
+    }
     event.preventDefault();
   });
+
+  const row = document.createElement('div');
+  row.className = 'selection-format-row';
+
+  const formatGroup = document.createElement('div');
+  formatGroup.className = 'selection-format-group';
+  formatGroup.hidden = !showFormat;
   for (const action of SELECTION_FORMAT_ACTIONS) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -109,12 +164,126 @@ export function createSelectionFormatBarElement(
     if (svg) {
       button.innerHTML = `<svg class="selection-format-icon" viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">${svg}</svg>`;
     }
-    bar.appendChild(button);
+    formatGroup.appendChild(button);
   }
+
+  const sep = document.createElement('span');
+  sep.className = 'selection-format-sep';
+  sep.setAttribute('aria-hidden', 'true');
+  sep.hidden = !showFormat;
+
+  const addChat = document.createElement('button');
+  addChat.type = 'button';
+  addChat.className = 'selection-chat-btn';
+  addChat.dataset.chat = 'selection';
+  addChat.textContent = 'Add to Chat';
+  addChat.title = 'Send the selection to Cursor Chat';
+  addChat.addEventListener('click', (event) => {
+    event.preventDefault();
+    options?.onAddToChat?.();
+  });
+
+  const addComment = document.createElement('button');
+  addComment.type = 'button';
+  addComment.className = 'selection-chat-btn';
+  addComment.dataset.chat = 'comment';
+  addComment.textContent = 'Add Comment';
+  addComment.title = 'Comment on the selection in Cursor Chat';
+  addComment.setAttribute('aria-pressed', 'false');
+
+  const composer = document.createElement('div');
+  composer.className = 'selection-comment-composer';
+  composer.hidden = true;
+
+  const textarea = document.createElement('textarea');
+  textarea.className = 'selection-comment-input';
+  textarea.rows = 3;
+  textarea.placeholder = 'Add a comment…';
+  textarea.setAttribute('aria-label', 'Comment');
+
+  const actions = document.createElement('div');
+  actions.className = 'selection-comment-actions';
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'selection-comment-cancel';
+  cancel.textContent = 'Cancel';
+
+  const send = document.createElement('button');
+  send.type = 'button';
+  send.className = 'selection-comment-send';
+  send.textContent = 'Send';
+  send.disabled = true;
+
+  const setComposerOpen = (next: boolean) => {
+    composer.hidden = !next;
+    addComment.setAttribute('aria-pressed', next ? 'true' : 'false');
+    composerOpen = next;
+    options?.onComposerChange?.(next);
+    if (next) {
+      textarea.focus();
+    }
+  };
+
+  const syncSendEnabled = () => {
+    send.disabled = textarea.value.trim().length === 0;
+  };
+
+  addComment.addEventListener('click', (event) => {
+    event.preventDefault();
+    setComposerOpen(composer.hidden);
+  });
+  cancel.addEventListener('click', (event) => {
+    event.preventDefault();
+    textarea.value = '';
+    syncSendEnabled();
+    setComposerOpen(false);
+  });
+  send.addEventListener('click', (event) => {
+    event.preventDefault();
+    const comment = textarea.value.trim();
+    if (!comment) {
+      return;
+    }
+    options?.onSendComment?.(comment);
+    textarea.value = '';
+    syncSendEnabled();
+    setComposerOpen(false);
+  });
+  textarea.addEventListener('input', syncSendEnabled);
+  textarea.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      setComposerOpen(false);
+      return;
+    }
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !send.disabled) {
+      event.preventDefault();
+      send.click();
+    }
+  });
+
+  actions.append(cancel, send);
+  composer.append(textarea, actions);
+  row.append(formatGroup, sep, addChat, addComment);
+  bar.append(row, composer);
+
+  bar.dataset.showFormat = showFormat ? 'true' : 'false';
   return bar;
 }
 
-function syncPressedState(bar: HTMLElement, state: EditorState): void {
+export function syncSelectionMenu(bar: HTMLElement, state: EditorState): void {
+  const flags = selectionMenuFlags(state);
+  const formatGroup = bar.querySelector<HTMLElement>('.selection-format-group');
+  const sep = bar.querySelector<HTMLElement>('.selection-format-sep');
+  if (formatGroup) {
+    formatGroup.hidden = !flags.showFormat;
+  }
+  if (sep) {
+    sep.hidden = !flags.showFormat;
+  }
+  bar.dataset.showFormat = flags.showFormat ? 'true' : 'false';
   const sel = state.selection.main;
   const active = detectFormatActive(state.doc.toString(), sel.from, sel.to);
   for (const button of bar.querySelectorAll<HTMLButtonElement>('[data-format]')) {
@@ -146,22 +315,51 @@ export function tooltipAnchorRect(
 function createFormatTooltipView(view: EditorView): TooltipView {
   const sel = view.state.selection.main;
   const platform = typeof navigator === 'undefined' ? '' : navigator.platform;
+  const flags = selectionMenuFlags(view.state);
   const dom = createSelectionFormatBarElement(
     (action) => {
       dispatchSelectionFormat(view, action);
     },
     detectFormatActive(view.state.doc.toString(), sel.from, sel.to),
     platform,
+    {
+      showFormat: flags.showFormat,
+      onAddToChat: () => {
+        requestSendToChat(selectionChatPayload(view, 'selection'));
+      },
+      onSendComment: (comment) => {
+        requestSendToChat(selectionChatPayload(view, 'comment', comment));
+      },
+      onComposerChange: () => {
+        try {
+          repositionTooltips(view);
+        } catch {
+          // Positioning is best-effort.
+        }
+      },
+    },
   );
+  const unregister = registerComposerCloser(() => {
+    const composer = dom.querySelector<HTMLElement>('.selection-comment-composer');
+    if (!composer || composer.hidden) {
+      return false;
+    }
+    const cancel = dom.querySelector<HTMLButtonElement>('.selection-comment-cancel');
+    cancel?.click();
+    return true;
+  });
   return {
     dom,
     offset: { x: 0, y: 8 },
     resize: false,
     getCoords: (pos) => tooltipAnchorRect(view, pos),
     update(update) {
-      if (update.docChanged || update.selectionSet) {
-        syncPressedState(dom, update.state);
+      if (update.docChanged || update.selectionSet || update.startState.readOnly !== update.state.readOnly) {
+        syncSelectionMenu(dom, update.state);
       }
+    },
+    destroy() {
+      unregister();
     },
   };
 }

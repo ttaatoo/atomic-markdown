@@ -9,6 +9,7 @@ import {
   formatTooltipForState,
   selectionFormatTooltip,
   selectionFormatTooltipField,
+  selectionMenuFlags,
   shouldShowFormatTooltip,
   tooltipAnchorRect,
 } from './selectionFormatTooltip.ts';
@@ -44,14 +45,20 @@ describe('selectionFormatTooltip field', () => {
     assert.equal(created.pos, FROM);
   });
 
-  it('hides when the selection is empty or the editor is read-only', () => {
+  it('hides when the selection is empty', () => {
     const empty = stateWithSelection({ empty: true });
     assert.equal(shouldShowFormatTooltip(empty), false);
     assert.equal(empty.field(selectionFormatTooltipField), null);
+    assert.deepEqual(selectionMenuFlags(empty), { show: false, showFormat: false });
+  });
 
+  it('keeps chat actions in reading mode and hides format icons', () => {
     const reading = stateWithSelection({ readOnly: true });
-    assert.equal(shouldShowFormatTooltip(reading), false);
-    assert.equal(reading.field(selectionFormatTooltipField), null);
+    assert.equal(shouldShowFormatTooltip(reading), true);
+    assert.deepEqual(selectionMenuFlags(reading), { show: true, showFormat: false });
+    const tooltip = reading.field(selectionFormatTooltipField);
+    assert.ok(tooltip);
+    assert.equal(tooltip.pos, FROM);
   });
 
   it('drops the tooltip after the selection collapses', () => {
@@ -96,6 +103,9 @@ describe('CM tooltip is wired; React overlay is gone', () => {
     assert.equal(app.includes('isForeignChromeFocus'), false);
     assert.equal(app.includes('setSelectionBar'), false);
     assert.match(app, /extensions=\{EXTRA_EXTENSIONS\}/);
+    assert.match(app, /setSendToChatHandler/);
+    assert.match(app, /closeCommentComposer/);
+    assert.match(sync, /selectionFormatTooltip\(\)/);
     assert.match(css, /\.cm-tooltip\.selection-format-bar/);
     assert.match(css, /\.selection-format-bar/);
   });
