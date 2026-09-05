@@ -1,0 +1,975 @@
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--background, var(--vscode-editor-background));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  font-family: var(--vscode-font-family), system-ui, sans-serif;
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.app {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app > .atomic-cm-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.atomic-cm-editor .cm-editor {
+  height: 100%;
+}
+
+.atomic-cm-editor .cm-scroller,
+.outline-panel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, var(--vscode-widget-border)) transparent;
+}
+
+/*
+ * Plannotator default palettes — tokens copied from
+ * packages/ui/themes/plannotator.css (do not invent other palettes).
+ * Scoped to html.theme-plannotator / .light; writing-surface colors
+ * come from these oklch values, not --vscode-editor-* and not desaturated
+ * approximations. followVscode only picks dark vs light. This is not Plannotator.
+ */
+html.theme-plannotator {
+  --background: oklch(0.15 0.02 260);
+  --foreground: oklch(0.90 0.01 260);
+  --card: oklch(0.22 0.02 260);
+  --card-foreground: oklch(0.90 0.01 260);
+  --popover: oklch(0.28 0.025 260);
+  --popover-foreground: oklch(0.90 0.01 260);
+  --primary: oklch(0.75 0.18 280);
+  --primary-foreground: oklch(0.15 0.02 260);
+  --secondary: oklch(0.65 0.15 180);
+  --secondary-foreground: oklch(0.15 0.02 260);
+  --muted: oklch(0.26 0.02 260);
+  --muted-foreground: oklch(0.72 0.02 260);
+  --accent: oklch(0.70 0.20 60);
+  --accent-foreground: oklch(0.15 0.02 260);
+  --destructive: oklch(0.65 0.20 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.35 0.02 260);
+  --input: oklch(0.26 0.02 260);
+  --ring: oklch(0.75 0.18 280);
+  --success: oklch(0.72 0.17 150);
+  --success-foreground: oklch(0.15 0.02 260);
+  --warning: oklch(0.75 0.15 85);
+  --warning-foreground: oklch(0.20 0.02 260);
+
+  /* Workbench stacks on purpose — plannotator.css Inter/Geist are not the default look. */
+  --font-sans: var(--vscode-font-family), system-ui, sans-serif;
+  --font-mono: var(--vscode-editor-font-family), ui-monospace, monospace;
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --code-bg: oklch(0.26 0.02 260);
+  --focus-highlight: oklch(0.70 0.20 200);
+}
+
+html.theme-plannotator.light {
+  --background: oklch(0.97 0.005 260);
+  --foreground: oklch(0.18 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 260);
+  --primary: oklch(0.50 0.25 280);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.50 0.18 180);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.92 0.01 260);
+  --muted-foreground: oklch(0.40 0.02 260);
+  --accent: oklch(0.60 0.22 50);
+  --accent-foreground: oklch(0.18 0.02 260);
+  --destructive: oklch(0.50 0.25 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.88 0.01 260);
+  --input: oklch(0.92 0.01 260);
+  --ring: oklch(0.50 0.25 280);
+  --success: oklch(0.45 0.20 150);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.55 0.18 85);
+  --warning-foreground: oklch(0.18 0.02 260);
+
+  --code-bg: oklch(0.92 0.01 260);
+}
+
+/*
+ * Map Plannotator tokens onto Atomic. Specificity beats Atomic's
+ * [data-theme="light"] .atomic-cm-editor block so those hardcoded
+ * GitHub-light hexes do not leak through.
+ */
+html.theme-plannotator .atomic-cm-editor,
+html.theme-plannotator[data-theme='light'] .atomic-cm-editor,
+html.theme-plannotator[data-theme='dark'] .atomic-cm-editor {
+  --atomic-editor-font: var(--atomic-user-font, var(--vscode-font-family));
+  --atomic-editor-font-mono: var(--vscode-editor-font-family, var(--font-mono));
+  --atomic-editor-fg: var(--foreground);
+  --atomic-editor-fg-muted: var(--muted-foreground);
+  --atomic-editor-fg-faint: var(--muted-foreground);
+  --atomic-editor-bg: var(--background);
+  --atomic-editor-bg-panel: var(--card);
+  --atomic-editor-bg-surface: var(--popover);
+  --atomic-editor-border: var(--border);
+  --atomic-editor-accent: var(--primary);
+  --atomic-editor-accent-bright: var(--ring);
+  --atomic-editor-accent-soft: var(--secondary);
+  --atomic-editor-link: var(--primary);
+  --atomic-editor-link-hover: var(--accent);
+  --atomic-editor-code-bg: var(--code-bg);
+  --atomic-editor-radius: var(--radius);
+  --atomic-editor-code-rail: color-mix(in oklch, var(--primary) 28%, var(--border));
+  --atomic-editor-selection-bg: color-mix(in oklch, var(--primary) 26%, transparent);
+  --atomic-editor-search-bg: color-mix(in oklch, var(--primary) 28%, transparent);
+  --atomic-editor-search-bg-active: color-mix(in oklch, var(--primary) 45%, transparent);
+  --atomic-editor-initial-reveal-bg: color-mix(in oklch, var(--primary) 16%, transparent);
+  --atomic-editor-initial-reveal-bg-strong: color-mix(in oklch, var(--primary) 30%, transparent);
+  --atomic-editor-body-size: var(--atomic-user-size, var(--vscode-editor-font-size, var(--vscode-font-size, 13px)));
+  --atomic-editor-body-leading: var(--atomic-user-leading, 1.7);
+  --atomic-editor-body-measure: var(--atomic-user-measure, 70ch);
+  --atomic-editor-hl-keyword: var(--primary);
+  --atomic-editor-hl-string: var(--secondary);
+  --atomic-editor-hl-number: var(--accent);
+  --atomic-editor-hl-comment: var(--muted-foreground);
+  --atomic-editor-hl-type: var(--primary);
+  --atomic-editor-hl-function: var(--secondary);
+  --atomic-editor-hl-property: var(--foreground);
+  --atomic-editor-hl-regexp: var(--accent);
+  --atomic-editor-hl-escape: var(--accent);
+  --atomic-editor-hl-tag: var(--primary);
+  --atomic-editor-hl-variable: var(--foreground);
+  --atomic-editor-hl-operator: var(--muted-foreground);
+  --atomic-editor-hl-invalid: var(--destructive);
+}
+
+.cm-atomic-mermaid {
+  margin: 0.65em 0;
+  padding: 0.75em 0.85em;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  contain: layout;
+  border: 1px solid var(--atomic-editor-border, var(--vscode-widget-border));
+  border-radius: var(--atomic-editor-radius, var(--radius));
+  background: var(--atomic-editor-bg-panel, var(--vscode-editor-background));
+}
+
+.cm-atomic-mermaid-clickable {
+  cursor: pointer;
+}
+
+.cm-atomic-mermaid-inner {
+  min-height: 2em;
+}
+
+.cm-atomic-mermaid-inner svg {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: none;
+}
+
+.cm-atomic-mermaid-pending {
+  color: var(--atomic-editor-fg-muted, var(--vscode-descriptionForeground));
+  font-size: 0.85em;
+}
+
+.cm-atomic-mermaid-error {
+  color: var(--destructive, var(--vscode-errorForeground, #f14c4c));
+  font-family: var(--atomic-editor-font-mono, var(--vscode-editor-font-family, ui-monospace, monospace));
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+html {
+  --atomic-user-leading: 1.7;
+  --atomic-user-measure: 70ch;
+}
+
+.atomic-cm-editor .cm-scroller {
+  justify-content: center;
+}
+
+.atomic-cm-editor .cm-content {
+  max-width: var(--atomic-user-measure, 70ch);
+  font-size: var(--atomic-user-size, var(--vscode-editor-font-size, var(--vscode-font-size, 13px)));
+  line-height: var(--atomic-user-leading, 1.7);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-scroller {
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 1.75rem 1.5rem 3rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-content {
+  max-width: var(--atomic-editor-body-measure, var(--atomic-user-measure, 70ch));
+  padding-inline: 1.25rem;
+  font-size: var(--atomic-editor-body-size);
+  line-height: var(--atomic-editor-body-leading, var(--atomic-user-leading, 1.7));
+  font-family: var(--atomic-editor-font, var(--font-sans));
+}
+
+/*
+ * Writing-surface decorations — Plannotator visual treatment on Atomic's
+ * known classes. Prefer CSS over forking Atomic. Fence lines are per-line
+ * decorations (no single .pn-code wrapper); heading padding stays modest
+ * so CM6 click targets are not stolen by a tall blank strip.
+ */
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h1 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.75em;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  padding-top: 0.2em;
+  padding-bottom: 0.16em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h2 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.45em;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  padding-top: 0.2em;
+  padding-bottom: 0.14em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h3 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.25em;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  padding-top: 0.18em;
+  padding-bottom: 0.1em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h4 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1.1em;
+  font-weight: 600;
+  line-height: 1.4;
+  padding-top: 0.14em;
+  padding-bottom: 0.08em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h5 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 1em;
+  font-weight: 600;
+  padding-top: 0.12em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-h6 {
+  font-family: var(--atomic-editor-font, var(--font-sans));
+  font-size: 0.875em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding-top: 0.1em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-blockquote {
+  border-left: 2px solid color-mix(in oklch, var(--primary) 50%, transparent);
+  padding-left: 0.85em;
+  background: color-mix(in oklch, var(--muted) 28%, transparent);
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code {
+  font-family: var(--atomic-editor-font-mono, var(--font-mono));
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: var(--code-bg);
+  box-shadow: none;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border-radius: 0;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code:first-child,
+html.theme-plannotator .atomic-cm-editor .cm-line:not(.cm-atomic-fenced-code) + .cm-line.cm-atomic-fenced-code {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+  padding-top: 0.85rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code:last-child,
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-fenced-code:has(+ .cm-line:not(.cm-atomic-fenced-code)) {
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  padding-bottom: 0.85rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-inline-code {
+  font-family: var(--atomic-editor-font-mono, var(--font-mono));
+  font-size: 0.875em;
+  background: color-mix(in oklch, var(--muted) 72%, var(--code-bg));
+  border-radius: 0.35rem;
+  padding: 0.12em 0.38em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-link {
+  color: var(--primary);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-link:hover {
+  color: var(--accent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table th,
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table td {
+  border-color: var(--border);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-table th {
+  background: var(--muted);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox {
+  border-color: color-mix(in oklch, var(--primary) 42%, var(--muted-foreground));
+  border-radius: 0.25rem;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-atomic-task-checkbox:checked::after {
+  border-color: var(--primary-foreground);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-selectionBackground {
+  background: color-mix(in oklch, var(--primary) 26%, transparent) !important;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-content ::selection {
+  background: color-mix(in oklch, var(--primary) 26%, transparent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-hr {
+  margin-block: 0.7em;
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-line.cm-atomic-hr::after {
+  border-top: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-searchMatch {
+  background: color-mix(in oklch, var(--primary) 16%, transparent);
+}
+
+html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected {
+  background: color-mix(in oklch, var(--primary) 28%, transparent);
+}
+
+/* Positioning + width measurement context. Overlay drawers hang here, not in the flex row. */
+.editor-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+  container-name: atomic-editor;
+}
+
+/* Wide mode: outline + editor sit in this row. Overlay mode: this row is the editor only. */
+.editor-shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.editor-shell > .atomic-cm-editor,
+.editor-shell > .editor-pane {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.editor-pane > .atomic-cm-editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.doc-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px 4px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 40;
+}
+
+.doc-pills:not([hidden]) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.doc-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in oklch, var(--border, #888) 70%, transparent);
+  background: color-mix(in oklch, var(--muted, #888) 42%, var(--popover, var(--card, transparent)));
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font: inherit;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.doc-pill:hover {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--muted, #888) 58%, var(--popover, transparent));
+}
+
+.doc-pill[aria-pressed='true'],
+.doc-pill[data-copied='true'] {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--muted, #888) 72%, var(--popover, transparent));
+}
+
+.doc-pill svg {
+  display: block;
+}
+
+.doc-global-card {
+  position: absolute;
+  top: calc(100% - 2px);
+  right: 12px;
+  z-index: 41;
+}
+
+.atomic-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.4rem 0.65rem;
+  border-bottom: 1px solid var(--border, var(--vscode-widget-border));
+  background: color-mix(in oklch, var(--muted, #888) 70%, var(--background, transparent));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.atomic-notice-text {
+  margin: 0;
+  flex: 1;
+  font-size: inherit;
+  line-height: 1.35;
+}
+
+.atomic-notice-dismiss {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  border-radius: var(--radius-sm, 3px);
+}
+
+.atomic-notice-dismiss:hover,
+.atomic-notice-dismiss:focus-visible {
+  color: var(--foreground, var(--vscode-editor-foreground));
+}
+
+/*
+ * CM adds .cm-tooltip to our root and paints a default gray chip.
+ * Beat that so only the capsule (and optional card) show.
+ */
+html.theme-plannotator .cm-tooltip.selection-format-bar,
+html.theme-plannotator .cm-tooltip.selection-context,
+.cm-tooltip.selection-format-bar.selection-context,
+.selection-format-bar.selection-context {
+  z-index: 50;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
+}
+
+.selection-capsule {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: 999px;
+  background: var(--popover, var(--card, var(--vscode-editor-background)));
+  box-shadow: 0 6px 18px color-mix(in oklch, var(--foreground, #000) 10%, transparent);
+}
+
+.selection-capsule-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.selection-capsule-btn:hover,
+.selection-capsule-btn[aria-pressed='true'] {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+}
+
+.selection-capsule-btn[data-action='comment'] {
+  color: color-mix(in oklch, var(--accent, #c9842a) 82%, var(--foreground, #222));
+}
+
+.selection-capsule-btn[data-action='send'] {
+  color: var(--warning, #d4a017);
+}
+
+.selection-capsule-btn[data-action='dismiss'] {
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.selection-capsule-btn svg {
+  display: block;
+}
+
+.selection-capsule-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: color-mix(in oklch, var(--border, #888) 80%, transparent);
+}
+
+.selection-card:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: stretch;
+  min-width: 18.5rem;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: 14px;
+  background: var(--popover, var(--card, var(--vscode-editor-background)));
+  color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
+  box-shadow: 0 10px 32px color-mix(in oklch, var(--foreground, #000) 12%, transparent);
+}
+
+.selection-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selection-card-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font-size: 0.85em;
+}
+
+.selection-card-title-plain {
+  font-weight: 600;
+}
+
+.selection-card-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.selection-card-icon-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.selection-card-icon-btn:hover,
+.selection-card-icon-btn[aria-pressed='true'] {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: var(--muted, var(--vscode-list-hoverBackground));
+}
+
+.selection-card-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.4em;
+  resize: vertical;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: var(--radius-md, 8px);
+  padding: 8px 9px;
+  background: var(--background, var(--vscode-editor-background));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  font: inherit;
+}
+
+.selection-card[data-expanded='true'] .selection-card-input {
+  min-height: 10em;
+}
+
+.selection-card-input:focus,
+.selection-card-input:focus-visible {
+  outline: none;
+  border-color: var(--primary, var(--vscode-focusBorder));
+  box-shadow: 0 0 0 1px var(--primary, var(--vscode-focusBorder));
+}
+
+.selection-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.selection-card-hint {
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font-size: 0.8em;
+}
+
+.selection-card-send {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 14px;
+  background: var(--primary, var(--vscode-button-background));
+  color: var(--primary-foreground, var(--vscode-button-foreground));
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.selection-card-send:hover {
+  filter: brightness(1.06);
+}
+
+/*
+ * Feishu-style push rail: fixed sidebar width resizes the writing column.
+ * Collapsed state is a thin icon rail. Overlay is last resort (≤240px, JS).
+ */
+.outline-panel {
+  flex: 0 0 15.5rem;
+  width: 15.5rem;
+  min-width: 15.5rem;
+  max-width: 15.5rem;
+  overflow: auto;
+  border-right: 1px solid var(--border, var(--vscode-widget-border));
+  background: var(--card, var(--vscode-editor-background));
+  color: var(--card-foreground, var(--vscode-editor-foreground));
+  padding: 4px 2px 8px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.outline-panel.outline-panel-collapsed {
+  flex: 0 0 2rem;
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding: 0.35rem 0.1rem;
+  overflow: hidden;
+}
+
+@container atomic-editor (max-width: 720px) {
+  .outline-panel:not(.outline-panel-collapsed):not(.outline-panel-overlay) {
+    flex: 0 0 min(12.5rem, 42%);
+    width: min(12.5rem, 42%);
+    min-width: 8rem;
+    max-width: 42%;
+  }
+}
+
+.outline-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 0;
+  padding: 0;
+  background: color-mix(in oklch, var(--background, #111) 42%, transparent);
+  cursor: default;
+}
+
+.outline-panel.outline-panel-overlay,
+.editor-frame.outline-overlay .outline-panel {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: auto;
+  bottom: 0;
+  left: 0;
+  flex: none;
+  width: min(16.5rem, 86%);
+  max-width: 16.5rem;
+  min-width: 0;
+  box-shadow: 0 10px 32px color-mix(in oklch, var(--foreground, #000) 10%, transparent);
+}
+
+.outline-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 22px;
+  padding: 0 2px 2px;
+}
+
+.outline-panel-title {
+  flex: 1;
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  padding: 0 4px;
+}
+
+.outline-icon-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm, 3px);
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.outline-icon-btn:hover,
+.outline-icon-btn:focus-visible {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  outline: none;
+}
+
+.outline-panel-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.outline-empty {
+  margin: 2px 4px;
+  padding: 6px 8px;
+  font-size: inherit;
+  line-height: 1.35;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  background: var(--muted, color-mix(in oklch, var(--card, #222) 88%, transparent));
+  border: 1px dashed var(--border, var(--vscode-widget-border));
+  border-radius: var(--radius-sm, 3px);
+}
+
+.outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.outline-list .outline-list {
+  padding-left: 0;
+}
+
+.outline-row {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  gap: 0;
+}
+
+.outline-twisty,
+.outline-twisty-spacer {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm, 3px);
+  background: none;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.outline-twisty {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outline-twisty::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 3.5px 0 3.5px 5px;
+  border-color: transparent transparent transparent currentColor;
+  transform: rotate(0deg);
+}
+
+.outline-twisty-open::before {
+  transform: rotate(90deg);
+}
+
+.outline-twisty:hover,
+.outline-twisty:focus-visible {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+  color: var(--foreground, var(--vscode-editor-foreground));
+  outline: none;
+}
+
+.outline-item {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  line-height: 1.35;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.outline-item:hover {
+  background: var(--muted, var(--vscode-list-hoverBackground));
+}
+
+.outline-item-active {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--primary, #888) 12%, var(--muted, transparent));
+  font-weight: 600;
+}
+
+.outline-level-1 { font-weight: 600; }
+.outline-level-2 { padding-left: 8px; }
+.outline-level-3 { padding-left: 16px; }
+.outline-level-4 { padding-left: 24px; }
+.outline-level-5 { padding-left: 32px; }
+.outline-level-6 { padding-left: 40px; }
+
+.atomic-notice-dismiss:focus-visible,
+.outline-item:focus-visible,
+.outline-twisty:focus-visible,
+.outline-icon-btn:focus-visible,
+.outline-backdrop:focus-visible,
+.doc-pill:focus-visible,
+.selection-capsule-btn:focus-visible,
+.selection-card-icon-btn:focus-visible,
+.selection-card-send:focus-visible {
+  outline: 2px solid var(--ring, var(--vscode-focusBorder));
+  outline-offset: 2px;
+}
+
+html.transitions-ready .outline-item,
+html.transitions-ready .outline-icon-btn,
+html.transitions-ready .outline-twisty,
+html.transitions-ready .atomic-notice,
+html.transitions-ready .doc-pill,
+html.transitions-ready .selection-capsule-btn,
+html.transitions-ready .selection-card-send,
+html.transitions-ready .atomic-notice-dismiss {
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.transitions-ready .outline-item,
+  html.transitions-ready .outline-icon-btn,
+  html.transitions-ready .outline-twisty,
+  html.transitions-ready .atomic-notice,
+  html.transitions-ready .doc-pill,
+  html.transitions-ready .selection-capsule-btn,
+  html.transitions-ready .selection-card-send,
+  html.transitions-ready .atomic-notice-dismiss {
+    transition: none;
+  }
+}
+
+.atomic-fatal {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 1.25rem 1.4rem;
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: var(--background, var(--vscode-editor-background));
+  font-size: 0.9rem;
+  line-height: 1.5;
+}

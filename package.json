@@ -1,0 +1,345 @@
+{
+  "name": "atomic-markdown",
+  "displayName": "Atomic Markdown",
+  "description": "Obsidian-style Markdown live preview via Atomic Editor. Raw markdown on disk stays the source of truth.",
+  "version": "0.1.0",
+  "publisher": "ttaatoo",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ttaatoo/atomic-markdown.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ttaatoo/atomic-markdown/issues"
+  },
+  "homepage": "https://github.com/ttaatoo/atomic-markdown#readme",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=22.0.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "wysiwyg",
+    "live preview",
+    "obsidian",
+    "atomic",
+    "codemirror",
+    "mermaid",
+    "outline"
+  ],
+  "activationEvents": [
+    "onCustomEditor:ttaatoo.atomicMarkdown",
+    "onCommand:atomicMarkdown.open",
+    "onCommand:atomicMarkdown.toggleReadingMode",
+    "onCommand:atomicMarkdown.find",
+    "onCommand:atomicMarkdown.closeFind",
+    "onCommand:atomicMarkdown.toggleLightDark",
+    "onCommand:atomicMarkdown.format",
+    "onCommand:atomicMarkdown.toggleOutline"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "ttaatoo.atomicMarkdown",
+        "displayName": "Atomic Markdown",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "Atomic Markdown",
+      "properties": {
+        "atomicMarkdown.theme": {
+          "type": "string",
+          "enum": [
+            "followVscode",
+            "dark",
+            "light"
+          ],
+          "enumDescriptions": [
+            "Use Plannotator’s default dark or light palette according to the workbench kind. Does not remap the canvas to VS Code editor colors.",
+            "Exact Plannotator default dark tokens (packages/ui/themes/plannotator.css).",
+            "Exact Plannotator default light tokens (packages/ui/themes/plannotator.css)."
+          ],
+          "default": "followVscode",
+          "description": "Which Plannotator palette to use. dark and light are the exact default tokens from packages/ui/themes/plannotator.css. followVscode only picks that dark or light pair from the workbench kind — it does not remap the canvas to VS Code editor colors or quiet the accent."
+        },
+        "atomicMarkdown.fontFamily": {
+          "type": "string",
+          "default": "",
+          "description": "Optional font stack for the writing surface. Empty follows the VS Code workbench font. Bundled Inter Variable / Geist Mono apply only if you name them here."
+        },
+        "atomicMarkdown.fontSize": {
+          "type": ["number", "null"],
+          "default": null,
+          "minimum": 12,
+          "maximum": 28,
+          "description": "Optional body size in pixels (12–28). Empty/null follows the VS Code editor or workbench font size."
+        },
+        "atomicMarkdown.lineHeight": {
+          "type": "number",
+          "default": 1.7,
+          "minimum": 1.2,
+          "maximum": 2.4,
+          "description": "Unitless line-height for the writing surface (1.2–2.4, default 1.7)."
+        },
+        "atomicMarkdown.contentWidth": {
+          "type": "number",
+          "default": 70,
+          "minimum": 40,
+          "maximum": 120,
+          "description": "Maximum measure of the writing column in `ch` (40–120, default 70)."
+        },
+        "atomicMarkdown.outline.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the heading outline panel inside the editor. Off never shows the outline and does not write a [TOC] into the file."
+        },
+        "atomicMarkdown.images.directory": {
+          "type": "string",
+          "default": "assets",
+          "description": "Directory for pasted or dropped images, relative to the Markdown file. Default `assets`. Absolute paths and `..` are rejected."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "atomicMarkdown.open",
+        "title": "Open with Atomic Markdown",
+        "category": "Atomic Markdown",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "atomicMarkdown.toggleReadingMode",
+        "title": "Toggle Reading Mode",
+        "category": "Atomic Markdown",
+        "icon": "$(book)"
+      },
+      {
+        "command": "atomicMarkdown.find",
+        "title": "Find",
+        "category": "Atomic Markdown",
+        "icon": "$(search)"
+      },
+      {
+        "command": "atomicMarkdown.closeFind",
+        "title": "Close Find",
+        "category": "Atomic Markdown"
+      },
+      {
+        "command": "atomicMarkdown.toggleLightDark",
+        "title": "Toggle Light/Dark",
+        "category": "Atomic Markdown",
+        "icon": "$(color-mode)"
+      },
+      {
+        "command": "atomicMarkdown.toggleOutline",
+        "title": "Toggle Outline",
+        "category": "Atomic Markdown",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "title": "Format Selection",
+        "category": "Atomic Markdown"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "atomicMarkdown.open",
+          "when": "resourceExtname == .md"
+        },
+        {
+          "command": "atomicMarkdown.toggleReadingMode",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+        },
+        {
+          "command": "atomicMarkdown.find",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+        },
+        {
+          "command": "atomicMarkdown.closeFind",
+          "when": "false"
+        },
+        {
+          "command": "atomicMarkdown.toggleLightDark",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+        },
+        {
+          "command": "atomicMarkdown.toggleOutline",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.outlineEnabled"
+        },
+        {
+          "command": "atomicMarkdown.format",
+          "when": "false"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "atomicMarkdown.open",
+          "when": "resourceExtname == .md && activeCustomEditorId != ttaatoo.atomicMarkdown",
+          "group": "navigation"
+        },
+        {
+          "command": "atomicMarkdown.toggleReadingMode",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode",
+          "group": "navigation@1",
+          "icon": "$(book)"
+        },
+        {
+          "command": "atomicMarkdown.toggleReadingMode",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.readingMode",
+          "group": "navigation@1",
+          "icon": "$(pencil)"
+        },
+        {
+          "command": "atomicMarkdown.find",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown",
+          "group": "navigation@2"
+        },
+        {
+          "command": "atomicMarkdown.toggleOutline",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.outlineEnabled",
+          "group": "navigation@3",
+          "icon": "$(list-tree)"
+        },
+        {
+          "command": "atomicMarkdown.toggleLightDark",
+          "when": "activeCustomEditorId == ttaatoo.atomicMarkdown",
+          "group": "navigation@4",
+          "icon": "$(color-mode)"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "atomicMarkdown.open",
+          "when": "resourceExtname == .md && activeCustomEditorId != ttaatoo.atomicMarkdown",
+          "group": "1_open"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "atomicMarkdown.open",
+          "when": "resourceExtname == .md && activeCustomEditorId != ttaatoo.atomicMarkdown",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "atomicMarkdown.open",
+          "when": "resourceExtname == .md",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "atomicMarkdown.find",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !editorTextFocus"
+      },
+      {
+        "command": "atomicMarkdown.find",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && webviewFocus"
+      },
+      {
+        "command": "atomicMarkdown.find",
+        "key": "ctrl+f",
+        "mac": "cmd+f",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown"
+      },
+      {
+        "command": "atomicMarkdown.closeFind",
+        "key": "escape",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && atomicMarkdown.findOpen"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "args": "bold",
+        "key": "ctrl+b",
+        "mac": "cmd+b",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "args": "italic",
+        "key": "ctrl+i",
+        "mac": "cmd+i",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode"
+      },
+      {
+        "command": "atomicMarkdown.format",
+        "args": "link",
+        "key": "ctrl+k",
+        "mac": "cmd+k",
+        "when": "activeCustomEditorId == ttaatoo.atomicMarkdown && !atomicMarkdown.readingMode"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile -- --production",
+    "compile": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.webview.json --noEmit && node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "test": "node --experimental-strip-types --test src/*.test.ts webview/*.test.ts",
+    "package": "npm run compile -- --production && npx @vscode/vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@atomic-editor/editor": "~0.6.2",
+    "@codemirror/autocomplete": "^6.18.6",
+    "@codemirror/commands": "^6.8.1",
+    "@codemirror/lang-cpp": "^6.0.3",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-go": "^6.0.1",
+    "@codemirror/lang-html": "^6.4.9",
+    "@codemirror/lang-java": "^6.0.1",
+    "@codemirror/lang-javascript": "^6.2.3",
+    "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-markdown": "^6.3.2",
+    "@codemirror/lang-php": "^6.0.1",
+    "@codemirror/lang-python": "^6.1.7",
+    "@codemirror/lang-rust": "^6.0.1",
+    "@codemirror/lang-sql": "^6.8.0",
+    "@codemirror/lang-xml": "^6.1.0",
+    "@codemirror/lang-yaml": "^6.1.2",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/legacy-modes": "^6.5.1",
+    "@codemirror/search": "^6.5.11",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.8",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@lezer/common": "^1.2.3",
+    "@lezer/highlight": "^1.2.1",
+    "@lezer/markdown": "^1.4.2",
+    "mermaid": "^11.17.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.3.2",
+    "esbuild": "^0.25.4",
+    "typescript": "^5.8.3"
+  }
+}
