@@ -2,10 +2,10 @@
 
 ## 0.1.0
 
-- No webview top chrome: Format strip, Reading chip, and top outline toggle are gone. Reading mode is command/title only. Outline collapse/expand/twisties live on the Feishu rail.
+- No Format strip, Reading chip, or top outline toggle. Quiet top-right **Global comment** + **Copy** pills sit on the writing column. Reading mode is command/title only. Outline collapse/expand/twisties live on the Feishu rail.
 - WYSIWYG formatting via keyboard shortcuts (`dispatchFormat` / keymaps). No format icons on the selection UI. Removed `atomicMarkdown.toolbar.enabled`.
-- Selection UI is a CodeMirror 6 `showTooltip` extension (`EXTRA_EXTENSIONS`), not a React overlay: Plannotator-style **Comment** / **Global comment** / **Copy** pills plus a comment card when `state.selection.main` is non-empty (including reading mode). No `document.activeElement` gate.
-- Selection → Cursor Chat: the comment card is open by default. **Send** is enabled with an empty comment (ships the selection). A typed note adds `Comment: …`. **Global comment** sends an optional note plus the file (fenced under ~8k chars). **Copy** posts `{ type: 'copyText' }` to the host clipboard. Host prefers `workbench.action.chat.open` (Cursor ≥2.3) and falls back to clipboard + `composer.newAgentChat` + paste. Flex rules honor `[hidden]` via `:not([hidden])`.
+- Selection UI is a CodeMirror 6 `showTooltip` extension (`EXTRA_EXTENSIONS`), not a React overlay: a compact icon capsule (comment, lightning quick-send, dismiss) when `state.selection.main` is non-empty (including reading mode). Click comment to open the card. No `document.activeElement` gate.
+- Selection → Cursor Chat: card **Send** is enabled with an empty comment (ships the selection). Lightning is one-click empty send. A typed note adds `Comment: …`. Top **Global comment** sends an optional note plus the file (fenced under ~8k chars). **Copy** posts the full document via `{ type: 'copyText' }` to the host clipboard. Host prefers `workbench.action.chat.open` (Cursor ≥2.3) and falls back to clipboard + `composer.newAgentChat` + paste. Flex rules honor `[hidden]` via `:not([hidden])`.
 - CSS absorb: radius ladder + `--atomic-editor-radius`, blockquote primary rail, 2px focus rings, thin scrollbars, stronger selection wash, muted HR. Palette tokens unchanged.
 - Feishu-style outline (目录): expanded left rail **pushes** and resizes the writing column; collapse to a thin icon rail; nested heading twisties persist for the session. Overlay only as last resort at ≤240px.
 - Workbench fonts by default: remaining chrome and body use `--vscode-font-family` / `--vscode-editor-font-family` and workbench/editor size. Bundled Inter / Geist Mono stay optional via `fontFamily`.

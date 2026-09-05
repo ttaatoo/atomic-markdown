@@ -15,9 +15,7 @@ import {
   readCoordsAtPos,
   selectionLayerAnchor,
 } from './selectionBar.ts';
-import { requestCopyText, requestSendToChat, selectionChatPayload } from './sendToChat.ts';
-
-export type SelectionCardMode = 'selection' | 'global';
+import { requestSendToChat, selectionChatPayload } from './sendToChat.ts';
 
 export function selectionMenuFlags(state: { selection: { main: { empty: boolean } } }): { show: boolean } {
   return { show: !state.selection.main.empty };
@@ -104,7 +102,7 @@ export function isCommentComposerOpen(): boolean {
   return tooltipOpen;
 }
 
-/** Window-level Escape — dismisses the selection card even if the editor has focus. */
+/** Window-level Escape: close the comment card first, then dismiss the capsule. */
 export function closeCommentComposer(): boolean {
   return tooltipCloser?.() ?? false;
 }
@@ -120,31 +118,30 @@ export function registerComposerCloser(close: () => boolean): () => void {
   };
 }
 
-function iconSvg(path: string): string {
-  return `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+function iconSvg(path: string, filled = false): string {
+  const paint = filled
+    ? 'fill="currentColor" stroke="none"'
+    : 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+  return `<svg viewBox="0 0 20 20" width="15" height="15" ${paint} aria-hidden="true">${path}</svg>`;
 }
 
-const ICON_COMMENT = iconSvg('<path d="M4 5.2h12v7.2H8.2L4 15.6V5.2z"/>');
-const ICON_GLOBE = iconSvg(
-  '<circle cx="10" cy="10" r="6"/><path d="M4 10h12M10 4c2 2.2 2 9.8 0 12M10 4c-2 2.2-2 9.8 0 12"/>',
-);
-const ICON_COPY = iconSvg('<rect x="7" y="7" width="8" height="8" rx="1.2"/><path d="M5 13V5h8"/>');
-const ICON_CHECK = iconSvg('<path d="M5 10.2 8.4 13.4 15 6.6"/>');
+const ICON_COMMENT = iconSvg('<path d="M4 4.6h12a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H9.1L4 16.4V5.6a1 1 0 0 1 1-1z"/>', true);
+const ICON_BOLT = iconSvg('<path d="M11.2 2.2 4.8 10.6h4.3l-.9 7.2 6.6-8.8H10.4l.8-6.8z"/>', true);
 const ICON_EXPAND = iconSvg('<path d="M8 4H4v4M12 16h4v-4M4 8 8 4M16 12l-4 4"/>');
 const ICON_CLOSE = iconSvg('<path d="M5 5l10 10M15 5 5 15"/>');
 
 export function createSelectionContextElement(options: {
   selectionText: string;
   platform?: string;
-  onSend: (mode: SelectionCardMode, comment: string) => void;
-  onCopy: () => void;
+  onSend: (comment: string) => void;
+  onQuickSend: () => void;
   onDismiss: () => void;
   onLayout?: () => void;
 }): HTMLDivElement {
   const platform = options.platform ?? '';
   const root = document.createElement('div');
   root.className = 'selection-format-bar selection-context';
-  root.setAttribute('role', 'dialog');
+  root.setAttribute('role', 'toolbar');
   root.setAttribute('aria-label', 'Selection');
   root.addEventListener('mousedown', (event) => {
     const target = event.target as HTMLElement | null;
@@ -154,16 +151,20 @@ export function createSelectionContextElement(options: {
     event.preventDefault();
   });
 
-  const pills = document.createElement('div');
-  pills.className = 'selection-pills';
+  const capsule = document.createElement('div');
+  capsule.className = 'selection-capsule';
 
-  const commentPill = pillButton('comment', 'Comment', ICON_COMMENT);
-  const globalPill = pillButton('global', 'Global comment', ICON_GLOBE);
-  const copyPill = pillButton('copy', 'Copy', ICON_COPY);
+  const commentBtn = capsuleButton('comment', 'Comment', ICON_COMMENT);
+  const sendBtn = capsuleButton('send', 'Send to chat', ICON_BOLT);
+  const dismissBtn = capsuleButton('dismiss', 'Dismiss', ICON_CLOSE);
+
+  const divider = document.createElement('span');
+  divider.className = 'selection-capsule-divider';
+  divider.setAttribute('aria-hidden', 'true');
 
   const card = document.createElement('div');
   card.className = 'selection-card';
-  card.dataset.mode = 'selection';
+  card.setAttribute('hidden', '');
 
   const header = document.createElement('div');
   header.className = 'selection-card-head';
@@ -181,11 +182,11 @@ export function createSelectionContextElement(options: {
   expand.setAttribute('aria-label', 'Expand comment');
   expand.innerHTML = ICON_EXPAND;
 
-  const close = document.createElement('button');
-  close.type = 'button';
-  close.className = 'selection-card-icon-btn';
-  close.setAttribute('aria-label', 'Close');
-  close.innerHTML = ICON_CLOSE;
+  const closeCard = document.createElement('button');
+  closeCard.type = 'button';
+  closeCard.className = 'selection-card-icon-btn';
+  closeCard.setAttribute('aria-label', 'Close comment');
+  closeCard.innerHTML = ICON_CLOSE;
 
   const textarea = document.createElement('textarea');
   textarea.className = 'selection-card-input';
@@ -205,45 +206,32 @@ export function createSelectionContextElement(options: {
   send.className = 'selection-card-send';
   send.textContent = 'Send';
 
-  let mode: SelectionCardMode = 'selection';
-
-  const setMode = (next: SelectionCardMode) => {
-    mode = next;
-    card.dataset.mode = next;
-    commentPill.setAttribute('aria-pressed', next === 'selection' ? 'true' : 'false');
-    globalPill.setAttribute('aria-pressed', next === 'global' ? 'true' : 'false');
-    if (next === 'global') {
-      title.textContent = 'Global Comment';
-      title.classList.add('selection-card-title-plain');
-      textarea.placeholder = 'Add a global comment…';
-      send.textContent = 'Add';
+  const setCardOpen = (next: boolean) => {
+    if (next) {
+      card.removeAttribute('hidden');
     } else {
-      title.textContent = quoteSelectionPreview(options.selectionText);
-      title.classList.remove('selection-card-title-plain');
-      textarea.placeholder = 'Add a comment…';
-      send.textContent = 'Send';
+      card.setAttribute('hidden', '');
     }
-    textarea.focus();
+    commentBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+    if (next) {
+      textarea.focus();
+    }
     options.onLayout?.();
   };
 
-  commentPill.addEventListener('click', (event) => {
+  const isCardOpen = () => !card.hasAttribute('hidden');
+
+  commentBtn.addEventListener('click', (event) => {
     event.preventDefault();
-    setMode('selection');
+    setCardOpen(!isCardOpen());
   });
-  globalPill.addEventListener('click', (event) => {
+  sendBtn.addEventListener('click', (event) => {
     event.preventDefault();
-    setMode('global');
+    options.onQuickSend();
   });
-  copyPill.addEventListener('click', (event) => {
+  dismissBtn.addEventListener('click', (event) => {
     event.preventDefault();
-    options.onCopy();
-    copyPill.dataset.copied = 'true';
-    copyPill.innerHTML = `${ICON_CHECK}<span>Copied</span>`;
-    window.setTimeout(() => {
-      copyPill.dataset.copied = 'false';
-      copyPill.innerHTML = `${ICON_COPY}<span>Copy</span>`;
-    }, 1200);
+    options.onDismiss();
   });
   expand.addEventListener('click', (event) => {
     event.preventDefault();
@@ -253,45 +241,52 @@ export function createSelectionContextElement(options: {
     textarea.rows = next ? 8 : 3;
     options.onLayout?.();
   });
-  close.addEventListener('click', (event) => {
+  closeCard.addEventListener('click', (event) => {
     event.preventDefault();
-    options.onDismiss();
+    setCardOpen(false);
   });
   send.addEventListener('click', (event) => {
     event.preventDefault();
-    options.onSend(mode, textarea.value);
+    options.onSend(textarea.value);
   });
   textarea.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      options.onDismiss();
+      setCardOpen(false);
       return;
     }
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      options.onSend(mode, textarea.value);
+      options.onSend(textarea.value);
     }
   });
 
-  commentPill.setAttribute('aria-pressed', 'true');
-  globalPill.setAttribute('aria-pressed', 'false');
+  (root as HTMLDivElement & { closeSelectionCard?: () => boolean }).closeSelectionCard = () => {
+    if (!isCardOpen()) {
+      return false;
+    }
+    setCardOpen(false);
+    return true;
+  };
 
-  headActions.append(expand, close);
+  commentBtn.setAttribute('aria-pressed', 'false');
+  headActions.append(expand, closeCard);
   header.append(title, headActions);
   footer.append(hint, send);
-  pills.append(commentPill, globalPill, copyPill);
+  capsule.append(commentBtn, sendBtn, divider, dismissBtn);
   card.append(header, textarea, footer);
-  root.append(pills, card);
+  root.append(capsule, card);
   return root;
 }
 
-function pillButton(id: string, label: string, icon: string): HTMLButtonElement {
+function capsuleButton(id: string, label: string, icon: string): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'selection-pill';
-  button.dataset.pill = id;
-  button.innerHTML = `${icon}<span>${label}</span>`;
+  button.className = 'selection-capsule-btn';
+  button.dataset.action = id;
+  button.setAttribute('aria-label', label);
+  button.innerHTML = icon;
   return button;
 }
 
@@ -331,31 +326,29 @@ function createSelectionTooltipView(view: EditorView): TooltipView {
   const dismiss = () => {
     dismissSelectionTooltip(view);
   };
+  const sendSelection = (comment: string) => {
+    requestSendToChat(selectionChatPayload(view, 'selection', comment));
+  };
   const dom = createSelectionContextElement({
     selectionText,
     platform,
-    onSend: (mode, comment) => {
-      requestSendToChat(selectionChatPayload(view, mode === 'global' ? 'global' : 'selection', comment));
-    },
-    onCopy: () => {
-      const current = view.state.selection.main;
-      const start = Math.min(current.from, current.to);
-      const end = Math.max(current.from, current.to);
-      requestCopyText(view.state.doc.sliceString(start, end));
-    },
+    onSend: sendSelection,
+    onQuickSend: () => sendSelection(''),
     onDismiss: dismiss,
     onLayout: layout,
   });
-  const unregister = registerComposerCloser(() => dismissSelectionTooltip(view));
+  const closeCard = (dom as HTMLDivElement & { closeSelectionCard?: () => boolean }).closeSelectionCard;
+  const unregister = registerComposerCloser(() => {
+    if (closeCard?.()) {
+      return true;
+    }
+    return dismissSelectionTooltip(view);
+  });
   return {
     dom,
     offset: { x: 0, y: 10 },
     resize: false,
     getCoords: (pos) => tooltipAnchorRect(view, pos),
-    mount() {
-      const input = dom.querySelector<HTMLTextAreaElement>('.selection-card-input');
-      input?.focus();
-    },
     destroy() {
       unregister();
     },

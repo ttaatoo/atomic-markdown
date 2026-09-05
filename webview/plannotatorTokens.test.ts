@@ -149,7 +149,8 @@ describe('Plannotator tokens in theme.css', () => {
     assert.equal(css.includes('box-shadow: inset 2px 0 0 var(--primary'), false);
     assert.match(css, /\.selection-card:not\(\[hidden\]\) \{[\s\S]*border-radius: 14px/);
     assert.match(css, /\.selection-card-send \{[\s\S]*border-radius: 999px/);
-    assert.match(css, /\.selection-pill \{[\s\S]*border-radius: 999px/);
+    assert.match(css, /\.selection-capsule \{[\s\S]*border-radius: 999px/);
+    assert.match(css, /\.doc-pill \{[\s\S]*border-radius: 999px/);
     assert.match(css, /\.selection-card-input:focus[\s\S]*border-color: var\(--primary/);
     assert.match(css, /--radius-sm: calc\(var\(--radius\) - 4px\);/);
     assert.match(css, /outline: 2px solid var\(--ring/);

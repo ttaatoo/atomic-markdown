@@ -409,10 +409,82 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   min-width: 0;
 }
 
-.editor-shell > .atomic-cm-editor {
+.editor-shell > .atomic-cm-editor,
+.editor-shell > .editor-pane {
   flex: 1;
   min-height: 0;
   min-width: 0;
+}
+
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.editor-pane > .atomic-cm-editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.doc-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px 4px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 40;
+}
+
+.doc-pills:not([hidden]) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.doc-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in oklch, var(--border, #888) 70%, transparent);
+  background: color-mix(in oklch, var(--muted, #888) 42%, var(--popover, var(--card, transparent)));
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font: inherit;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.doc-pill:hover {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--muted, #888) 58%, var(--popover, transparent));
+}
+
+.doc-pill[aria-pressed='true'],
+.doc-pill[data-copied='true'] {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--muted, #888) 72%, var(--popover, transparent));
+}
+
+.doc-pill svg {
+  display: block;
+}
+
+.doc-global-card {
+  position: absolute;
+  top: calc(100% - 2px);
+  right: 12px;
+  z-index: 41;
 }
 
 .atomic-notice {
@@ -452,8 +524,8 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 }
 
 /*
- * CM adds .cm-tooltip to our root and paints a default gray chip
- * (&light / &dark). Beat that so only the pill row + paper card show.
+ * CM adds .cm-tooltip to our root and paints a default gray chip.
+ * Beat that so only the capsule (and optional card) show.
  */
 html.theme-plannotator .cm-tooltip.selection-format-bar,
 html.theme-plannotator .cm-tooltip.selection-context,
@@ -463,7 +535,7 @@ html.theme-plannotator .cm-tooltip.selection-context,
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 8px;
   padding: 0;
   border: 0;
@@ -475,48 +547,64 @@ html.theme-plannotator .cm-tooltip.selection-context,
   color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
 }
 
-.selection-pills:not([hidden]) {
+.selection-capsule {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  gap: 2px;
+  padding: 3px 4px;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: 999px;
+  background: var(--popover, var(--card, var(--vscode-editor-background)));
+  box-shadow: 0 6px 18px color-mix(in oklch, var(--foreground, #000) 10%, transparent);
 }
 
-.selection-pill {
+.selection-capsule-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  border: 1px solid color-mix(in oklch, var(--border, #888) 70%, transparent);
-  background: color-mix(in oklch, var(--muted, #888) 42%, var(--popover, var(--card, transparent)));
-  color: var(--muted-foreground, var(--vscode-descriptionForeground));
-  font: inherit;
-  line-height: 1;
-  padding: 5px 10px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
   border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
   cursor: pointer;
-  white-space: nowrap;
 }
 
-.selection-pill:hover {
-  color: var(--foreground, var(--vscode-editor-foreground));
-  background: color-mix(in oklch, var(--muted, #888) 58%, var(--popover, transparent));
+.selection-capsule-btn:hover,
+.selection-capsule-btn[aria-pressed='true'] {
+  background: var(--muted, var(--vscode-list-hoverBackground));
 }
 
-.selection-pill[aria-pressed='true'],
-.selection-pill[data-copied='true'] {
-  color: var(--foreground, var(--vscode-editor-foreground));
-  background: color-mix(in oklch, var(--muted, #888) 72%, var(--popover, transparent));
+.selection-capsule-btn[data-action='comment'] {
+  color: color-mix(in oklch, var(--accent, #c9842a) 82%, var(--foreground, #222));
 }
 
-.selection-pill svg {
+.selection-capsule-btn[data-action='send'] {
+  color: var(--warning, #d4a017);
+}
+
+.selection-capsule-btn[data-action='dismiss'] {
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+}
+
+.selection-capsule-btn svg {
   display: block;
+}
+
+.selection-capsule-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 3px;
+  background: color-mix(in oklch, var(--border, #888) 80%, transparent);
 }
 
 .selection-card:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-self: stretch;
   min-width: 18.5rem;
   padding: 12px 12px 10px;
   border: 1px solid var(--border, var(--vscode-widget-border));
@@ -844,7 +932,8 @@ html.theme-plannotator .cm-tooltip.selection-context,
 .outline-twisty:focus-visible,
 .outline-icon-btn:focus-visible,
 .outline-backdrop:focus-visible,
-.selection-pill:focus-visible,
+.doc-pill:focus-visible,
+.selection-capsule-btn:focus-visible,
 .selection-card-icon-btn:focus-visible,
 .selection-card-send:focus-visible {
   outline: 2px solid var(--ring, var(--vscode-focusBorder));
@@ -855,7 +944,8 @@ html.transitions-ready .outline-item,
 html.transitions-ready .outline-icon-btn,
 html.transitions-ready .outline-twisty,
 html.transitions-ready .atomic-notice,
-html.transitions-ready .selection-pill,
+html.transitions-ready .doc-pill,
+html.transitions-ready .selection-capsule-btn,
 html.transitions-ready .selection-card-send,
 html.transitions-ready .atomic-notice-dismiss {
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
@@ -866,7 +956,8 @@ html.transitions-ready .atomic-notice-dismiss {
   html.transitions-ready .outline-icon-btn,
   html.transitions-ready .outline-twisty,
   html.transitions-ready .atomic-notice,
-  html.transitions-ready .selection-pill,
+  html.transitions-ready .doc-pill,
+  html.transitions-ready .selection-capsule-btn,
   html.transitions-ready .selection-card-send,
   html.transitions-ready .atomic-notice-dismiss {
     transition: none;

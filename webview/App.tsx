@@ -8,6 +8,7 @@ import type { HostToWebview } from '../src/protocol';
 import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { isFindOpenShortcut, shouldWindowCloseFind } from './findEscape';
+import { DocActions } from './DocActions';
 import { closeCommentComposer } from './selectionFormatTooltip';
 import { setCopyTextHandler, setSendToChatHandler } from './sendToChat';
 import { onFindOpenChange } from './findEscapeKeymap';
@@ -57,6 +58,8 @@ export function App() {
   const [outlineEnabled, setOutlineEnabled] = useState(true);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [notice, setNotice] = useState<string | undefined>();
+  const [globalCommentOpen, setGlobalCommentOpen] = useState(false);
+  const globalCommentOpenRef = useRef(false);
   const [outlineNodes, setOutlineNodes] = useState<OutlineNode[]>([]);
   const [collapsedFroms, setCollapsedFroms] = useState<Set<number>>(() => new Set());
   const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
@@ -75,6 +78,7 @@ export function App() {
 
   readOnlyRef.current = readOnly;
   outlineOpenRef.current = outlineOpen;
+  globalCommentOpenRef.current = globalCommentOpen;
 
   useEffect(() => observeTheme(() => themeSettingRef.current), []);
 
@@ -325,6 +329,12 @@ export function App() {
       if (event.key !== 'Escape') {
         return;
       }
+      if (globalCommentOpenRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        setGlobalCommentOpen(false);
+        return;
+      }
       if (closeCommentComposer()) {
         event.preventDefault();
         event.stopPropagation();
@@ -489,16 +499,19 @@ export function App() {
               onToggleNode={onToggleOutlineNode}
             />
           ) : null}
-          <AtomicCodeMirrorEditor
-            documentId={session.uri}
-            markdownSource={session.text}
-            readOnly={readOnly}
-            onMarkdownChange={onMarkdownChange}
-            onLinkClick={onLinkClick}
-            editorHandleRef={editorHandleRef}
-            codeLanguages={CODE_LANGUAGES}
-            extensions={EXTRA_EXTENSIONS}
-          />
+          <div className="editor-pane">
+            <DocActions open={globalCommentOpen} onOpenChange={setGlobalCommentOpen} />
+            <AtomicCodeMirrorEditor
+              documentId={session.uri}
+              markdownSource={session.text}
+              readOnly={readOnly}
+              onMarkdownChange={onMarkdownChange}
+              onLinkClick={onLinkClick}
+              editorHandleRef={editorHandleRef}
+              codeLanguages={CODE_LANGUAGES}
+              extensions={EXTRA_EXTENSIONS}
+            />
+          </div>
         </div>
         {outlineOverlay ? (
           <button

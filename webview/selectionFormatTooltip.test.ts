@@ -57,7 +57,7 @@ describe('selectionFormatTooltip field', () => {
     assert.deepEqual(selectionMenuFlags(empty), { show: false });
   });
 
-  it('still shows the comment stack in reading mode', () => {
+  it('still shows the capsule in reading mode', () => {
     const reading = stateWithSelection({ readOnly: true });
     assert.equal(shouldShowFormatTooltip(reading), true);
     assert.deepEqual(selectionMenuFlags(reading), { show: true });
@@ -137,13 +137,19 @@ describe('CM tooltip is wired; format icons are gone', () => {
     assert.equal(tooltip.includes('Add to Chat'), false);
     assert.equal(tooltip.includes('SELECTION_FORMAT_ACTIONS'), false);
     assert.equal(/send\.disabled\s*=/.test(tooltip), false);
-    assert.match(tooltip, /Global comment/);
-    assert.match(tooltip, /requestCopyText/);
+    assert.equal(tooltip.includes('Global comment'), false);
+    assert.equal(tooltip.includes('requestCopyText'), false);
+    assert.match(tooltip, /selection-capsule/);
+    assert.match(tooltip, /Send to chat/);
+    assert.match(app, /DocActions/);
+    assert.match(app, /globalCommentOpen/);
     assert.match(css, /\.selection-card:not\(\[hidden\]\)/);
-    assert.match(css, /\.selection-pills:not\(\[hidden\]\)/);
+    assert.match(css, /\.selection-capsule/);
+    assert.match(css, /\.doc-pills:not\(\[hidden\]\)/);
     assert.match(css, /\.selection-card-send/);
     assert.equal(css.includes('.selection-format-group'), false);
     assert.equal(css.includes('.selection-format-btn'), false);
+    assert.equal(css.includes('.selection-pills'), false);
   });
 
   it('notifies view-update listeners on every ViewUpdate', () => {
@@ -209,7 +215,15 @@ class MiniEl {
   }
 
   getAttribute(name: string) {
-    return this.attributes[name] ?? null;
+    return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
+  }
+
+  hasAttribute(name: string) {
+    return Object.prototype.hasOwnProperty.call(this.attributes, name);
+  }
+
+  removeAttribute(name: string) {
+    delete this.attributes[name];
   }
 
   addEventListener(type: string, fn: (event: Record<string, unknown>) => void) {
@@ -292,17 +306,17 @@ describe('createSelectionContextElement', () => {
   installMiniDom();
 
   function mount() {
-    const sent: Array<{ mode: string; comment: string }> = [];
-    const copies: number[] = [];
+    const sent: string[] = [];
+    const quick: number[] = [];
     const dismisses: number[] = [];
     const root = createSelectionContextElement({
       selectionText: 'Raw markdown is the source of truth.',
       platform: 'MacIntel',
-      onSend: (mode, comment) => {
-        sent.push({ mode, comment });
+      onSend: (comment) => {
+        sent.push(comment);
       },
-      onCopy: () => {
-        copies.push(1);
+      onQuickSend: () => {
+        quick.push(1);
       },
       onDismiss: () => {
         dismisses.push(1);
@@ -312,10 +326,8 @@ describe('createSelectionContextElement', () => {
     const input = root.querySelector('.selection-card-input') as MiniEl;
     const title = root.querySelector('.selection-card-title') as MiniEl;
     const card = root.querySelector('.selection-card') as MiniEl;
-    const commentPill = findPill(root, 'comment');
-    const globalPill = findPill(root, 'global');
-    const copyPill = findPill(root, 'copy');
-    return { root, send, input, title, card, commentPill, globalPill, copyPill, sent, copies, dismisses };
+    const capsule = root.querySelector('.selection-capsule') as MiniEl;
+    return { root, send, input, title, card, capsule, sent, quick, dismisses };
   }
 
   function findByAria(root: MiniEl, label: string): MiniEl {
@@ -336,70 +348,53 @@ describe('createSelectionContextElement', () => {
     return found;
   }
 
-  function findPill(root: MiniEl, id: string): MiniEl {
-    const walk = (el: MiniEl): MiniEl | null => {
-      if (el.dataset.pill === id) {
-        return el;
-      }
-      for (const child of el.children) {
-        const hit = walk(child);
-        if (hit) {
-          return hit;
-        }
-      }
-      return null;
-    };
-    const found = walk(root);
-    assert.ok(found, `missing pill ${id}`);
-    return found;
-  }
-
-  it('opens the selection card with Send enabled and an empty comment allowed', () => {
+  it('shows a capsule only until Comment opens the card', () => {
     const ui = mount();
-    assert.equal(ui.commentPill.getAttribute('aria-pressed'), 'true');
-    assert.equal(ui.globalPill.getAttribute('aria-pressed'), 'false');
+    assert.ok(ui.capsule);
+    assert.equal(ui.card.hasAttribute('hidden'), true);
+    assert.equal(findByAria(ui.root, 'Comment').getAttribute('aria-pressed'), 'false');
+    assert.equal(ui.root.querySelector('.selection-format-group'), null);
     assert.equal(ui.title.textContent, '"Raw markdown is the source…"');
+
+    findByAria(ui.root, 'Comment').dispatch('click');
+    assert.equal(ui.card.hasAttribute('hidden'), false);
     assert.equal(ui.input.placeholder, 'Add a comment…');
     assert.equal(ui.send.textContent, 'Send');
     assert.equal(ui.send.attributes.disabled, undefined);
-    assert.equal(ui.root.querySelector('.selection-format-group'), null);
     ui.send.dispatch('click');
-    assert.deepEqual(ui.sent, [{ mode: 'selection', comment: '' }]);
+    assert.deepEqual(ui.sent, ['']);
   });
 
-  it('switches to Global Comment and still sends an empty note', () => {
+  it('quick-sends from lightning without opening the card', () => {
     const ui = mount();
-    ui.globalPill.dispatch('click');
-    assert.equal(ui.card.dataset.mode, 'global');
-    assert.equal(ui.title.textContent, 'Global Comment');
-    assert.equal(ui.input.placeholder, 'Add a global comment…');
-    assert.equal(ui.send.textContent, 'Add');
-    assert.equal(ui.globalPill.getAttribute('aria-pressed'), 'true');
-    ui.send.dispatch('click');
-    assert.deepEqual(ui.sent, [{ mode: 'global', comment: '' }]);
-  });
-
-  it('copies, expands, and dismisses without sending chat', () => {
-    const ui = mount();
-    ui.copyPill.dispatch('click');
-    assert.deepEqual(ui.copies, [1]);
-    assert.equal(ui.copyPill.dataset.copied, 'true');
-    assert.match(ui.copyPill.innerHTML, /Copied/);
+    findByAria(ui.root, 'Send to chat').dispatch('click');
+    assert.deepEqual(ui.quick, [1]);
     assert.deepEqual(ui.sent, []);
+    assert.equal(ui.card.hasAttribute('hidden'), true);
+  });
 
+  it('closes the card without dismissing, and dismisses from the capsule X', () => {
+    const ui = mount();
+    findByAria(ui.root, 'Comment').dispatch('click');
     findByAria(ui.root, 'Expand comment').dispatch('click');
     assert.equal(ui.card.dataset.expanded, 'true');
     assert.equal(ui.input.rows, 8);
 
-    findByAria(ui.root, 'Close').dispatch('click');
+    findByAria(ui.root, 'Close comment').dispatch('click');
+    assert.equal(ui.card.hasAttribute('hidden'), true);
+    assert.deepEqual(ui.dismisses, []);
+
+    findByAria(ui.root, 'Dismiss').dispatch('click');
     assert.deepEqual(ui.dismisses, [1]);
     assert.deepEqual(ui.sent, []);
+    assert.deepEqual(ui.quick, []);
   });
 
   it('sends on ⌘↵ from the textarea', () => {
     const ui = mount();
+    findByAria(ui.root, 'Comment').dispatch('click');
     ui.input.value = 'please look';
     ui.input.dispatch('keydown', { key: 'Enter', metaKey: true, ctrlKey: false });
-    assert.deepEqual(ui.sent, [{ mode: 'selection', comment: 'please look' }]);
+    assert.deepEqual(ui.sent, ['please look']);
   });
 });

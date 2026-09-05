@@ -30,7 +30,9 @@ export const WRITING_SURFACE_FOCUS_SELECTOR = [
   '#root',
   '.selection-format-bar',
   '.selection-context',
+  '.selection-capsule',
   '.selection-card',
+  '.doc-actions',
 ].join(', ');
 
 type ClosestNode = {
