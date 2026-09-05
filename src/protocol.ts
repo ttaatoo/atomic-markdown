@@ -30,7 +30,7 @@ export function isFormatAction(value: unknown): value is FormatAction {
   return typeof value === 'string' && FORMAT_ACTIONS.has(value as FormatAction);
 }
 
-export type SendToChatMode = 'selection' | 'comment';
+export type SendToChatMode = 'selection' | 'comment' | 'global';
 
 export type SendToChatMessage = {
   type: 'sendToChat';
@@ -41,6 +41,11 @@ export type SendToChatMessage = {
   comment?: string;
 };
 
+export type CopyTextMessage = {
+  type: 'copyText';
+  text: string;
+};
+
 export function isSendToChatMessage(value: unknown): value is SendToChatMessage {
   if (!value || typeof value !== 'object') {
     return false;
@@ -49,7 +54,7 @@ export function isSendToChatMessage(value: unknown): value is SendToChatMessage 
   if (message.type !== 'sendToChat') {
     return false;
   }
-  if (message.mode !== 'selection' && message.mode !== 'comment') {
+  if (message.mode !== 'selection' && message.mode !== 'comment' && message.mode !== 'global') {
     return false;
   }
   if (typeof message.text !== 'string') {
@@ -67,6 +72,15 @@ export function isSendToChatMessage(value: unknown): value is SendToChatMessage 
   return true;
 }
 
+export function isCopyTextMessage(value: unknown): value is CopyTextMessage {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      (value as { type?: unknown }).type === 'copyText' &&
+      typeof (value as { text?: unknown }).text === 'string',
+  );
+}
+
 export type WebviewToHost =
   | { type: 'ready' }
   | { type: 'edit'; text: string; generation: number }
@@ -74,7 +88,8 @@ export type WebviewToHost =
   | { type: 'readOnlyChanged'; readOnly: boolean }
   | { type: 'saveImage'; requestId: string; mime: string; basename?: string; base64: string }
   | { type: 'findOpenChanged'; open: boolean }
-  | SendToChatMessage;
+  | SendToChatMessage
+  | CopyTextMessage;
 
 export type HostToWebview =
   | {

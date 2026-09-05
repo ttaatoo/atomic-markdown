@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isFormatAction, isSendToChatMessage } from './protocol.ts';
+import { isCopyTextMessage, isFormatAction, isSendToChatMessage } from './protocol.ts';
 
 describe('isFormatAction', () => {
   it('accepts known formatting actions only', () => {
@@ -14,7 +14,7 @@ describe('isFormatAction', () => {
 });
 
 describe('isSendToChatMessage', () => {
-  it('accepts selection and comment payloads', () => {
+  it('accepts selection, comment, and global payloads (empty comment ok)', () => {
     assert.equal(
       isSendToChatMessage({
         type: 'sendToChat',
@@ -36,6 +36,17 @@ describe('isSendToChatMessage', () => {
       }),
       true,
     );
+    assert.equal(
+      isSendToChatMessage({
+        type: 'sendToChat',
+        mode: 'global',
+        text: '# Hi\n',
+        from: 0,
+        to: 0,
+        comment: '',
+      }),
+      true,
+    );
   });
 
   it('rejects malformed chat messages', () => {
@@ -51,5 +62,14 @@ describe('isSendToChatMessage', () => {
       }),
       false,
     );
+  });
+});
+
+describe('isCopyTextMessage', () => {
+  it('accepts a string payload and rejects malformed messages', () => {
+    assert.equal(isCopyTextMessage({ type: 'copyText', text: 'hello' }), true);
+    assert.equal(isCopyTextMessage({ type: 'copyText', text: '' }), true);
+    assert.equal(isCopyTextMessage({ type: 'copyText' }), false);
+    assert.equal(isCopyTextMessage({ type: 'sendToChat', text: 'hello' }), false);
   });
 });

@@ -9,7 +9,7 @@ import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMa
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { isFindOpenShortcut, shouldWindowCloseFind } from './findEscape';
 import { closeCommentComposer } from './selectionFormatTooltip';
-import { setSendToChatHandler } from './sendToChat';
+import { setCopyTextHandler, setSendToChatHandler } from './sendToChat';
 import { onFindOpenChange } from './findEscapeKeymap';
 import { CODE_LANGUAGES } from './languages';
 import { OutlinePanel } from './OutlinePanel';
@@ -305,7 +305,13 @@ export function App() {
     setSendToChatHandler((request) => {
       vscodeApi.postMessage({ type: 'sendToChat', ...request });
     });
-    return () => setSendToChatHandler(undefined);
+    setCopyTextHandler((text) => {
+      vscodeApi.postMessage({ type: 'copyText', text });
+    });
+    return () => {
+      setSendToChatHandler(undefined);
+      setCopyTextHandler(undefined);
+    };
   }, []);
 
   useEffect(() => {

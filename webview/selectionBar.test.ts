@@ -354,7 +354,7 @@ describe('placeSelectionBar', () => {
 });
 
 describe('selection format actions', () => {
-  it('exposes only inline formats on the floating bar', () => {
+  it('keeps the inline format set for shortcuts (not shown on the tooltip)', () => {
     assert.deepEqual(SELECTION_FORMAT_ACTIONS, ['bold', 'italic', 'strike', 'inlineCode', 'link']);
   });
 

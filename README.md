@@ -12,7 +12,7 @@ This is a **v0.1 preview**. It is not published to the Marketplace and collects 
 
 Add captures from an F5 Extension Development Host here when you have them:
 
-- `docs/screenshots/editor.png` — edit mode with outline and selection format bar
+- `docs/screenshots/editor.png` — edit mode with outline and selection comment stack
 - `docs/screenshots/reading.png` — reading mode
 - `docs/screenshots/mermaid.png` — mermaid fence rendered as SVG
 
@@ -53,7 +53,7 @@ You can open **two Atomic panels** on the same file (split), or keep the default
 ## Features (v0.1)
 
 - Inline live preview (syntax hides on inactive lines)
-- No top format strip. Select text to get a compact floating bar (bold / italic / strike / code / link in edit mode, plus **Add to Chat** / **Add Comment**). Shortcuts still work with no chrome: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link
+- No top format strip. Select text to get a Plannotator-style stack: **Comment** / **Global comment** / **Copy** pills plus a comment card. Format via shortcuts only: **Cmd/Ctrl+B** bold, **Cmd/Ctrl+I** italic, **Cmd/Ctrl+K** link
 - Heading outline (目录) as a Feishu-style left sidebar that resizes the writing column — ATX `#`–`######` and setext H1/H2; nested headings collapse with twisties; collapse the rail to a thin icon strip from the panel itself (no top-bar outline control); highlights the current/near-viewport heading while you scroll or edit; view-only, never writes a `[TOC]` block
 - Paste or drop png/jpeg/gif/webp/svg images; the extension host saves them under `atomicMarkdown.images.directory` (default `assets` next to the Markdown file) and inserts a relative `![]()` at the caret
 - WYSIWYG tables
@@ -81,7 +81,7 @@ SVG files on disk are treated as untrusted image data: they are displayed with `
 
 ## Formatting and shortcuts
 
-There is no top Format strip. Selecting text shows a compact CodeMirror tooltip: format icons in edit mode, plus **Add to Chat** and **Add Comment**. Add Comment expands a small composer (Cancel / Send). Escape closes the composer first. The host opens Cursor Chat with a structured prompt (`Comment`, `File: path:lines`, fenced selection) via `workbench.action.chat.open`, or clipboard + `composer.newAgentChat` + paste if that command is missing. This fills the chat input; it does not create native Monaco reference chips. Pressed state reflects cheap wrap detection. Format tooltips include the shortcuts.
+There is no top Format strip and no format icons on the selection tooltip. Selecting text shows a CodeMirror tooltip: **Comment** (default card with a quoted preview), **Global comment**, and **Copy**. The card’s **Send** button is enabled even when the textarea is empty — that ships the selection to Cursor Chat (former Add to Chat). A typed note adds `Comment: …`. **Global comment** sends an optional note plus the file (fenced when the document is under ~8k characters). **Copy** writes the selection through the extension host clipboard. Escape or the card’s **X** dismisses the stack. The host opens Cursor Chat via `workbench.action.chat.open`, or clipboard + `composer.newAgentChat` + paste if that command is missing. This fills the chat input; it does not create native Monaco reference chips.
 
 **Cmd/Ctrl+B**, **I**, and **K** still format with no chrome. The Command Palette **Format Selection** action still runs heading cycle and list toggles (none → H1 → H2 → H3 → none; bullet / numbered / task).
 

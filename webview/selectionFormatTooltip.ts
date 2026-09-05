@@ -9,51 +9,35 @@ import {
 } from '@codemirror/view';
 import type { FormatAction } from '../src/protocol.ts';
 import { applyFormat } from './format.ts';
-import { detectFormatActive, type FormatActiveMap } from './formatActive.ts';
 import {
   SAFE_DEFAULT_ANCHOR,
-  SELECTION_FORMAT_ACTIONS,
   contentDefaultAnchor,
   readCoordsAtPos,
   selectionLayerAnchor,
 } from './selectionBar.ts';
-import { requestSendToChat, selectionChatPayload } from './sendToChat.ts';
-import { formatActionTitle } from './toolbarLabels.ts';
+import { requestCopyText, requestSendToChat, selectionChatPayload } from './sendToChat.ts';
 
-const INLINE_ICONS: Partial<Record<FormatAction, string>> = {
-  bold: '<path d="M5 4h6.2c2.3 0 3.8 1.4 3.8 3.3 0 1.4-.8 2.5-2.1 3 .9.3 2.6 1.3 2.6 3.2 0 2.2-1.7 3.5-4.2 3.5H5V4zm2.6 5.4h3.3c1 0 1.6-.6 1.6-1.4S11.9 6.6 10.9 6.6H7.6v2.8zm0 5.4h3.7c1.2 0 1.9-.6 1.9-1.6s-.7-1.6-1.9-1.6H7.6V14.8z"/>',
-  italic: '<path d="M9.2 4h6.1v1.8H12.4l-2.6 8.4h2.7V16H6.3v-1.8h2.8L11.7 5.8H9.2V4z"/>',
-  strike:
-    '<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M4 10h12"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M7.2 13.8c.5 1.1 1.6 1.8 3 1.8 2 0 3.4-1.1 3.4-2.7 0-2.2-2.2-2.6-4.4-3.2C7.2 9.1 5.8 8.3 5.8 6.5 5.8 4.7 7.4 3.5 9.8 3.5c1.6 0 2.8.6 3.5 1.6"/>',
-  inlineCode:
-    '<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M6.2 5.5 2.8 10l3.4 4.5M13.8 5.5 17.2 10l-3.4 4.5M11.2 3.8 8.8 16.2"/>',
-  link: '<path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M8.2 11.8 6.4 13.6a2.4 2.4 0 0 0 3.4 3.4l2.4-2.4M11.8 8.2l1.8-1.8a2.4 2.4 0 1 1 3.4 3.4l-2.4 2.4M8.7 11.3l2.6-2.6"/>',
-};
+export type SelectionCardMode = 'selection' | 'global';
 
-export function selectionMenuFlags(state: { readOnly: boolean; selection: { main: { empty: boolean } } }): {
-  show: boolean;
-  showFormat: boolean;
-} {
-  const show = !state.selection.main.empty;
-  return { show, showFormat: show && !state.readOnly };
+export function selectionMenuFlags(state: { selection: { main: { empty: boolean } } }): { show: boolean } {
+  return { show: !state.selection.main.empty };
 }
 
-/** Create-time `hidden` flags. Composer is always closed until Add Comment. */
-export function selectionMenuHiddenState(showFormat: boolean): {
-  formatGroup: boolean;
-  sep: boolean;
-  composer: boolean;
-} {
-  return {
-    formatGroup: !showFormat,
-    sep: !showFormat,
-    composer: true,
-  };
-}
-
-/** Non-empty CM selection — format icons only in edit mode. */
 export function shouldShowFormatTooltip(state: EditorState): boolean {
   return selectionMenuFlags(state).show;
+}
+
+export function quoteSelectionPreview(text: string, max = 28): string {
+  const one = text.replace(/\s+/g, ' ').trim();
+  if (!one) {
+    return '""';
+  }
+  const sliced = one.length > max ? `${one.slice(0, Math.max(1, max - 1))}…` : one;
+  return `"${sliced}"`;
+}
+
+export function sendShortcutHint(platform: string): string {
+  return /Mac|iPhone|iPad/i.test(platform) ? '⌘↵' : 'Ctrl+Enter';
 }
 
 export function formatTooltipForState(state: EditorState): Tooltip | null {
@@ -67,7 +51,7 @@ export function formatTooltipForState(state: EditorState): Tooltip | null {
     above: true,
     clip: false,
     create(view) {
-      return createFormatTooltipView(view);
+      return createSelectionTooltipView(view);
     },
   };
 }
@@ -75,11 +59,7 @@ export function formatTooltipForState(state: EditorState): Tooltip | null {
 export const selectionFormatTooltipField = StateField.define<Tooltip | null>({
   create: formatTooltipForState,
   update(value, tr) {
-    if (
-      !tr.docChanged &&
-      !tr.selection &&
-      tr.startState.readOnly === tr.state.readOnly
-    ) {
+    if (!tr.docChanged && !tr.selection && tr.startState.readOnly === tr.state.readOnly) {
       return value;
     }
     return formatTooltipForState(tr.state);
@@ -106,47 +86,65 @@ export function dispatchSelectionFormat(view: EditorView, action: FormatAction):
   return true;
 }
 
-let composerOpen = false;
-let composerCloser: (() => boolean) | undefined;
-
-export function isCommentComposerOpen(): boolean {
-  return composerOpen;
+export function dismissSelectionTooltip(view: EditorView): boolean {
+  const sel = view.state.selection.main;
+  if (sel.empty) {
+    return false;
+  }
+  view.dispatch({ selection: { anchor: sel.head } });
+  return true;
 }
 
-/** Window-level Escape (App.tsx) — works even when the editor, not the textarea, has focus. */
+let tooltipOpen = false;
+let tooltipCloser: (() => boolean) | undefined;
+
+export function isCommentComposerOpen(): boolean {
+  return tooltipOpen;
+}
+
+/** Window-level Escape — dismisses the selection card even if the editor has focus. */
 export function closeCommentComposer(): boolean {
-  return composerCloser?.() ?? false;
+  return tooltipCloser?.() ?? false;
 }
 
 export function registerComposerCloser(close: () => boolean): () => void {
-  composerCloser = close;
+  tooltipCloser = close;
+  tooltipOpen = true;
   return () => {
-    if (composerCloser === close) {
-      composerCloser = undefined;
-      composerOpen = false;
+    if (tooltipCloser === close) {
+      tooltipCloser = undefined;
+      tooltipOpen = false;
     }
   };
 }
 
-export function createSelectionFormatBarElement(
-  onFormat: (action: FormatAction) => void,
-  active: FormatActiveMap,
-  platform = '',
-  options?: {
-    showFormat?: boolean;
-    onAddToChat?: () => void;
-    onSendComment?: (comment: string) => void;
-    onComposerChange?: (open: boolean) => void;
-  },
-): HTMLDivElement {
-  const showFormat = options?.showFormat !== false;
-  const initialHidden = selectionMenuHiddenState(showFormat);
-  composerOpen = false;
-  const bar = document.createElement('div');
-  bar.className = 'selection-format-bar';
-  bar.setAttribute('role', 'toolbar');
-  bar.setAttribute('aria-label', 'Selection');
-  bar.addEventListener('mousedown', (event) => {
+function iconSvg(path: string): string {
+  return `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+}
+
+const ICON_COMMENT = iconSvg('<path d="M4 5.2h12v7.2H8.2L4 15.6V5.2z"/>');
+const ICON_GLOBE = iconSvg(
+  '<circle cx="10" cy="10" r="6"/><path d="M4 10h12M10 4c2 2.2 2 9.8 0 12M10 4c-2 2.2-2 9.8 0 12"/>',
+);
+const ICON_COPY = iconSvg('<rect x="7" y="7" width="8" height="8" rx="1.2"/><path d="M5 13V5h8"/>');
+const ICON_CHECK = iconSvg('<path d="M5 10.2 8.4 13.4 15 6.6"/>');
+const ICON_EXPAND = iconSvg('<path d="M8 4H4v4M12 16h4v-4M4 8 8 4M16 12l-4 4"/>');
+const ICON_CLOSE = iconSvg('<path d="M5 5l10 10M15 5 5 15"/>');
+
+export function createSelectionContextElement(options: {
+  selectionText: string;
+  platform?: string;
+  onSend: (mode: SelectionCardMode, comment: string) => void;
+  onCopy: () => void;
+  onDismiss: () => void;
+  onLayout?: () => void;
+}): HTMLDivElement {
+  const platform = options.platform ?? '';
+  const root = document.createElement('div');
+  root.className = 'selection-format-bar selection-context';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-label', 'Selection');
+  root.addEventListener('mousedown', (event) => {
     const target = event.target as HTMLElement | null;
     if (target?.closest('textarea, input')) {
       return;
@@ -154,155 +152,145 @@ export function createSelectionFormatBarElement(
     event.preventDefault();
   });
 
-  const row = document.createElement('div');
-  row.className = 'selection-format-row';
+  const pills = document.createElement('div');
+  pills.className = 'selection-pills';
 
-  const formatGroup = document.createElement('div');
-  formatGroup.className = 'selection-format-group';
-  formatGroup.hidden = initialHidden.formatGroup;
-  for (const action of SELECTION_FORMAT_ACTIONS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'selection-format-btn';
-    button.dataset.format = action;
-    const title = formatActionTitle(action, platform);
-    button.setAttribute('aria-label', title);
-    button.title = title;
-    button.setAttribute('aria-pressed', active[action] ? 'true' : 'false');
-    button.addEventListener('click', (event) => {
-      event.preventDefault();
-      onFormat(action);
-    });
-    const svg = INLINE_ICONS[action];
-    if (svg) {
-      button.innerHTML = `<svg class="selection-format-icon" viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">${svg}</svg>`;
-    }
-    formatGroup.appendChild(button);
-  }
+  const commentPill = pillButton('comment', 'Comment', ICON_COMMENT);
+  const globalPill = pillButton('global', 'Global comment', ICON_GLOBE);
+  const copyPill = pillButton('copy', 'Copy', ICON_COPY);
 
-  const sep = document.createElement('span');
-  sep.className = 'selection-format-sep';
-  sep.setAttribute('aria-hidden', 'true');
-  sep.hidden = initialHidden.sep;
+  const card = document.createElement('div');
+  card.className = 'selection-card';
+  card.dataset.mode = 'selection';
 
-  const addChat = document.createElement('button');
-  addChat.type = 'button';
-  addChat.className = 'selection-chat-btn';
-  addChat.dataset.chat = 'selection';
-  addChat.textContent = 'Add to Chat';
-  addChat.title = 'Send the selection to Cursor Chat';
-  addChat.addEventListener('click', (event) => {
-    event.preventDefault();
-    options?.onAddToChat?.();
-  });
+  const header = document.createElement('div');
+  header.className = 'selection-card-head';
 
-  const addComment = document.createElement('button');
-  addComment.type = 'button';
-  addComment.className = 'selection-chat-btn';
-  addComment.dataset.chat = 'comment';
-  addComment.textContent = 'Add Comment';
-  addComment.title = 'Comment on the selection in Cursor Chat';
-  addComment.setAttribute('aria-pressed', 'false');
+  const title = document.createElement('div');
+  title.className = 'selection-card-title';
+  title.textContent = quoteSelectionPreview(options.selectionText);
 
-  const composer = document.createElement('div');
-  composer.className = 'selection-comment-composer';
-  composer.hidden = initialHidden.composer;
+  const headActions = document.createElement('div');
+  headActions.className = 'selection-card-head-actions';
+
+  const expand = document.createElement('button');
+  expand.type = 'button';
+  expand.className = 'selection-card-icon-btn';
+  expand.setAttribute('aria-label', 'Expand comment');
+  expand.innerHTML = ICON_EXPAND;
+
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'selection-card-icon-btn';
+  close.setAttribute('aria-label', 'Close');
+  close.innerHTML = ICON_CLOSE;
 
   const textarea = document.createElement('textarea');
-  textarea.className = 'selection-comment-input';
+  textarea.className = 'selection-card-input';
   textarea.rows = 3;
   textarea.placeholder = 'Add a comment…';
   textarea.setAttribute('aria-label', 'Comment');
 
-  const actions = document.createElement('div');
-  actions.className = 'selection-comment-actions';
+  const footer = document.createElement('div');
+  footer.className = 'selection-card-foot';
 
-  const cancel = document.createElement('button');
-  cancel.type = 'button';
-  cancel.className = 'selection-comment-cancel';
-  cancel.textContent = 'Cancel';
+  const hint = document.createElement('span');
+  hint.className = 'selection-card-hint';
+  hint.textContent = sendShortcutHint(platform);
 
   const send = document.createElement('button');
   send.type = 'button';
-  send.className = 'selection-comment-send';
+  send.className = 'selection-card-send';
   send.textContent = 'Send';
-  send.disabled = true;
 
-  const setComposerOpen = (next: boolean) => {
-    composer.hidden = !next;
-    addComment.setAttribute('aria-pressed', next ? 'true' : 'false');
-    composerOpen = next;
-    options?.onComposerChange?.(next);
-    if (next) {
-      textarea.focus();
+  let mode: SelectionCardMode = 'selection';
+
+  const setMode = (next: SelectionCardMode) => {
+    mode = next;
+    card.dataset.mode = next;
+    commentPill.setAttribute('aria-pressed', next === 'selection' ? 'true' : 'false');
+    globalPill.setAttribute('aria-pressed', next === 'global' ? 'true' : 'false');
+    if (next === 'global') {
+      title.textContent = 'Global Comment';
+      title.classList.add('selection-card-title-plain');
+      textarea.placeholder = 'Add a global comment…';
+      send.textContent = 'Add';
+    } else {
+      title.textContent = quoteSelectionPreview(options.selectionText);
+      title.classList.remove('selection-card-title-plain');
+      textarea.placeholder = 'Add a comment…';
+      send.textContent = 'Send';
     }
+    textarea.focus();
+    options.onLayout?.();
   };
 
-  const syncSendEnabled = () => {
-    send.disabled = textarea.value.trim().length === 0;
-  };
-
-  addComment.addEventListener('click', (event) => {
+  commentPill.addEventListener('click', (event) => {
     event.preventDefault();
-    setComposerOpen(composer.hidden);
+    setMode('selection');
   });
-  cancel.addEventListener('click', (event) => {
+  globalPill.addEventListener('click', (event) => {
     event.preventDefault();
-    textarea.value = '';
-    syncSendEnabled();
-    setComposerOpen(false);
+    setMode('global');
+  });
+  copyPill.addEventListener('click', (event) => {
+    event.preventDefault();
+    options.onCopy();
+    copyPill.dataset.copied = 'true';
+    copyPill.innerHTML = `${ICON_CHECK}<span>Copied</span>`;
+    window.setTimeout(() => {
+      copyPill.dataset.copied = 'false';
+      copyPill.innerHTML = `${ICON_COPY}<span>Copy</span>`;
+    }, 1200);
+  });
+  expand.addEventListener('click', (event) => {
+    event.preventDefault();
+    const next = card.dataset.expanded !== 'true';
+    card.dataset.expanded = next ? 'true' : 'false';
+    expand.setAttribute('aria-pressed', next ? 'true' : 'false');
+    textarea.rows = next ? 8 : 3;
+    options.onLayout?.();
+  });
+  close.addEventListener('click', (event) => {
+    event.preventDefault();
+    options.onDismiss();
   });
   send.addEventListener('click', (event) => {
     event.preventDefault();
-    const comment = textarea.value.trim();
-    if (!comment) {
-      return;
-    }
-    options?.onSendComment?.(comment);
-    textarea.value = '';
-    syncSendEnabled();
-    setComposerOpen(false);
+    options.onSend(mode, textarea.value);
   });
-  textarea.addEventListener('input', syncSendEnabled);
   textarea.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      setComposerOpen(false);
+      options.onDismiss();
       return;
     }
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !send.disabled) {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
-      send.click();
+      options.onSend(mode, textarea.value);
     }
   });
 
-  actions.append(cancel, send);
-  composer.append(textarea, actions);
-  row.append(formatGroup, sep, addChat, addComment);
-  bar.append(row, composer);
+  commentPill.setAttribute('aria-pressed', 'true');
+  globalPill.setAttribute('aria-pressed', 'false');
 
-  bar.dataset.showFormat = showFormat ? 'true' : 'false';
-  return bar;
+  headActions.append(expand, close);
+  header.append(title, headActions);
+  footer.append(hint, send);
+  pills.append(commentPill, globalPill, copyPill);
+  card.append(header, textarea, footer);
+  root.append(pills, card);
+  return root;
 }
 
-export function syncSelectionMenu(bar: HTMLElement, state: EditorState): void {
-  const flags = selectionMenuFlags(state);
-  const formatGroup = bar.querySelector<HTMLElement>('.selection-format-group');
-  const sep = bar.querySelector<HTMLElement>('.selection-format-sep');
-  if (formatGroup) {
-    formatGroup.hidden = !flags.showFormat;
-  }
-  if (sep) {
-    sep.hidden = !flags.showFormat;
-  }
-  bar.dataset.showFormat = flags.showFormat ? 'true' : 'false';
-  const sel = state.selection.main;
-  const active = detectFormatActive(state.doc.toString(), sel.from, sel.to);
-  for (const button of bar.querySelectorAll<HTMLButtonElement>('[data-format]')) {
-    const action = button.dataset.format as FormatAction;
-    button.setAttribute('aria-pressed', active[action] ? 'true' : 'false');
-  }
+function pillButton(id: string, label: string, icon: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'selection-pill';
+  button.dataset.pill = id;
+  button.innerHTML = `${icon}<span>${label}</span>`;
+  return button;
 }
 
 export function tooltipAnchorRect(
@@ -325,51 +313,46 @@ export function tooltipAnchorRect(
   return contentDefaultAnchor(view.contentDOM?.getBoundingClientRect()) ?? SAFE_DEFAULT_ANCHOR;
 }
 
-function createFormatTooltipView(view: EditorView): TooltipView {
+function createSelectionTooltipView(view: EditorView): TooltipView {
   const sel = view.state.selection.main;
+  const from = Math.min(sel.from, sel.to);
+  const to = Math.max(sel.from, sel.to);
+  const selectionText = view.state.doc.sliceString(from, to);
   const platform = typeof navigator === 'undefined' ? '' : navigator.platform;
-  const flags = selectionMenuFlags(view.state);
-  const dom = createSelectionFormatBarElement(
-    (action) => {
-      dispatchSelectionFormat(view, action);
-    },
-    detectFormatActive(view.state.doc.toString(), sel.from, sel.to),
-    platform,
-    {
-      showFormat: flags.showFormat,
-      onAddToChat: () => {
-        requestSendToChat(selectionChatPayload(view, 'selection'));
-      },
-      onSendComment: (comment) => {
-        requestSendToChat(selectionChatPayload(view, 'comment', comment));
-      },
-      onComposerChange: () => {
-        try {
-          repositionTooltips(view);
-        } catch {
-          // Positioning is best-effort.
-        }
-      },
-    },
-  );
-  const unregister = registerComposerCloser(() => {
-    const composer = dom.querySelector<HTMLElement>('.selection-comment-composer');
-    if (!composer || composer.hidden) {
-      return false;
+  const layout = () => {
+    try {
+      repositionTooltips(view);
+    } catch {
+      // Best-effort.
     }
-    const cancel = dom.querySelector<HTMLButtonElement>('.selection-comment-cancel');
-    cancel?.click();
-    return true;
+  };
+  const dismiss = () => {
+    dismissSelectionTooltip(view);
+  };
+  const dom = createSelectionContextElement({
+    selectionText,
+    platform,
+    onSend: (mode, comment) => {
+      requestSendToChat(selectionChatPayload(view, mode === 'global' ? 'global' : 'selection', comment));
+    },
+    onCopy: () => {
+      const current = view.state.selection.main;
+      const start = Math.min(current.from, current.to);
+      const end = Math.max(current.from, current.to);
+      requestCopyText(view.state.doc.sliceString(start, end));
+    },
+    onDismiss: dismiss,
+    onLayout: layout,
   });
+  const unregister = registerComposerCloser(() => dismissSelectionTooltip(view));
   return {
     dom,
-    offset: { x: 0, y: 8 },
+    offset: { x: 0, y: 10 },
     resize: false,
     getCoords: (pos) => tooltipAnchorRect(view, pos),
-    update(update) {
-      if (update.docChanged || update.selectionSet || update.startState.readOnly !== update.state.readOnly) {
-        syncSelectionMenu(dom, update.state);
-      }
+    mount() {
+      const input = dom.querySelector<HTMLTextAreaElement>('.selection-card-input');
+      input?.focus();
     },
     destroy() {
       unregister();

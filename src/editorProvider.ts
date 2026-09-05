@@ -18,7 +18,7 @@ import {
   untitledImageError,
 } from './imageSave';
 import type { HostToWebview, WebviewToHost } from './protocol';
-import { isFormatAction, isSendToChatMessage } from './protocol';
+import { isCopyTextMessage, isFormatAction, isSendToChatMessage } from './protocol';
 import { openCursorChat, planSendToChat } from './sendToChat';
 import { addSession, removeSession } from './sessionMap';
 import {
@@ -273,6 +273,11 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
           return;
         }
         await this.sendSelectionToChat(document, message);
+        return;
+      case 'copyText':
+        if (isCopyTextMessage(message)) {
+          await vscode.env.clipboard.writeText(message.text);
+        }
         return;
     }
   }

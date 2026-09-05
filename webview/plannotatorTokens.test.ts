@@ -147,7 +147,10 @@ describe('Plannotator tokens in theme.css', () => {
     assert.match(css, /\.outline-panel \{[\s\S]*background: var\(--card/);
     assert.match(css, /\.outline-item-active \{[\s\S]*background: color-mix\(in oklch, var\(--primary/);
     assert.equal(css.includes('box-shadow: inset 2px 0 0 var(--primary'), false);
-    assert.match(css, /\.selection-format-bar \{[\s\S]*border-radius: var\(--radius-md/);
+    assert.match(css, /\.selection-card:not\(\[hidden\]\) \{[\s\S]*border-radius: 14px/);
+    assert.match(css, /\.selection-card-send \{[\s\S]*border-radius: 999px/);
+    assert.match(css, /\.selection-pill \{[\s\S]*border-radius: 999px/);
+    assert.match(css, /\.selection-card-input:focus[\s\S]*border-color: var\(--primary/);
     assert.match(css, /--radius-sm: calc\(var\(--radius\) - 4px\);/);
     assert.match(css, /outline: 2px solid var\(--ring/);
     assert.match(css, /scrollbar-width: thin;/);

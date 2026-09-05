@@ -23,7 +23,7 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 - Toolbar format-active detection; outline heading-at-scroll-position (not leftover caret); find Ctrl/F + Escape routing and package.json when clauses
 - Appearance clamps and CSS variable apply/remove
 - Plannotator token mapping (exact dark/light oklch, no theme-follow mute), writing-surface CSS contracts, and optional Inter/Geist latin font bundling
-- Feishu outline placement (push rail / icon rail / last-resort overlay), nested heading collapse + prune, YAML frontmatter / thematic-break `---` excluded from headings; no top Format strip; CM `showTooltip` selection menu (format + Add to Chat / Add Comment); chat prompt builder (path/lines/comment) and `sendToChat` protocol; image failure copy
+- Feishu outline placement (push rail / icon rail / last-resort overlay), nested heading collapse + prune, YAML frontmatter / thematic-break `---` excluded from headings; no top Format strip; CM `showTooltip` Comment / Global comment / Copy stack (no format icons); chat prompt builder (empty comment + global fence/path-only) and `sendToChat` / `copyText` protocol; image failure copy
 
 **Not** covered in CI: `mermaid.render` of invalid diagrams, VS Code `WorkspaceEdit` undo stack, real clipboard paste, two live webview panels, listener leaks under the VS Code host, or the full mermaid-scroll renderer path (see below).
 
@@ -68,8 +68,8 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
 10. **Image paste / drop**  
     Save the markdown file. Paste a PNG from the clipboard; confirm `assets/` (or configured dir) gets a unique file and `![](./assets/…)` is inserted at the caret. Undo removes the markdown link (file on disk may remain). Drop a `.jpg`. Untitled unsaved buffer: inline notice plus host error, clipboard unchanged. A write failure shows “Couldn't save image to assets/…” in the webview.
 
-11. **Selection format bar / shortcuts**  
-    There must be **no** top Format strip, Reading chip, or outline toggle in the webview. Select the plain sentence **“Raw markdown is the source of truth.”** (not `==highlights==` — that mark decoration is purple, not a CM selection). A CodeMirror tooltip (`.cm-tooltip.selection-format-bar`) **must** appear with format icons, **Add to Chat**, and **Add Comment**. Click **Add to Chat** — Cursor Chat opens with `File: …:line-line` and a fenced copy of the sentence. Click **Add Comment**, type a note, **Send** — the prompt includes `Comment: …`. Escape closes the composer without sending. Click bold — markdown wraps. Collapse the selection: the menu disappears. Reading mode hides format icons; chat actions stay if a selection exists. Cmd/Ctrl+B / I / K still wrap with no bar on screen. Confirm Cmd/Ctrl+S still saves (not hijacked). Heading/list formats remain available via **Format Selection**.
+11. **Selection comment stack / shortcuts**  
+    There must be **no** top Format strip, Reading chip, or outline toggle in the webview. Select the plain sentence **“Raw markdown is the source of truth.”** (not `==highlights==` — that mark decoration is purple, not a CM selection). A CodeMirror tooltip (`.cm-tooltip.selection-format-bar`) **must** appear with **Comment** / **Global comment** / **Copy** pills and an open comment card (quoted selection, expand, close). There are **no** B/I/S/code/link buttons and no separate **Add to Chat**. **Send** stays enabled with an empty textarea — click it and Cursor Chat opens with `File: …:line-line` and a fenced copy of the sentence (no `Comment:` line). Type a note and **Send** — the prompt includes `Comment: …`. **Global comment** switches the card title/placeholder; **Add** / **Send** builds a file-level prompt (fenced body when the doc is small). **Copy** copies the selection (pill shows Copied) and does not open chat. Escape or **X** dismisses the stack. Collapse the selection: the menu disappears. Reading mode still shows the stack if a selection exists. Cmd/Ctrl+B / I / K still wrap with no format icons on the bar. Confirm Cmd/Ctrl+S still saves (not hijacked). Heading/list formats remain available via **Format Selection**.
 
 11b. **Open with Atomic replaces the tab**  
     Open `welcome.md` in the default text editor. Command Palette / title icon → **Open with Atomic Markdown**. The text tab should become Atomic (same tab slot), not a second same-named tab. Explorer context on a `.md` that is already open as text should also reopen in place. **Reopen Editor With… → Text Editor** still works.
@@ -86,7 +86,7 @@ Do not treat an item as automated unless it is listed under “Covered by unit t
     **Last-resort overlay:** only when the frame is extremely narrow (≤240px) may the expanded TOC float over the prose. Escape (when find is closed) or backdrop click then collapses to the icon rail.
 
 13b. **Reading mode**  
-    Toggle reading mode: title icon switches book ↔ pencil. The webview must **not** show a Reading chip or any top strip. The selection format bar must not appear. Theme toggle remains in the editor title.
+    Toggle reading mode: title icon switches book ↔ pencil. The webview must **not** show a Reading chip or any top strip. Selecting text still shows the Comment / Global comment / Copy stack (no format icons). Theme toggle remains in the editor title.
 
 14. **Disposals**  
     Open Atomic, close, open again on the same file several times. No duplicate image inserts per paste, no stuck generation.

@@ -451,137 +451,178 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   color: var(--foreground, var(--vscode-editor-foreground));
 }
 
-.cm-tooltip.selection-format-bar,
-.selection-format-bar {
+/*
+ * CM adds .cm-tooltip to our root and paints a default gray chip
+ * (&light / &dark). Beat that so only the pill row + paper card show.
+ */
+html.theme-plannotator .cm-tooltip.selection-format-bar,
+html.theme-plannotator .cm-tooltip.selection-context,
+.cm-tooltip.selection-format-bar.selection-context,
+.selection-format-bar.selection-context {
   z-index: 50;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--border, var(--vscode-widget-border));
-  border-radius: var(--radius-md, var(--radius));
-  background: var(--popover, var(--card, var(--vscode-editor-background)));
-  color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
-  box-shadow: 0 4px 16px color-mix(in oklch, var(--foreground, #000) 12%, transparent);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size, 13px);
-}
-
-.selection-format-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.selection-format-group:not([hidden]) {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.selection-format-sep {
-  width: 1px;
-  align-self: stretch;
-  margin: 2px 4px;
-  background: var(--border, var(--vscode-widget-border));
-}
-
-.selection-chat-btn,
-.selection-comment-cancel,
-.selection-comment-send {
-  appearance: none;
+  gap: 8px;
+  padding: 0;
   border: 0;
   background: transparent;
-  color: var(--foreground, var(--vscode-editor-foreground));
+  background-color: transparent;
+  box-shadow: none;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
+}
+
+.selection-pills:not([hidden]) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selection-pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid color-mix(in oklch, var(--border, #888) 70%, transparent);
+  background: color-mix(in oklch, var(--muted, #888) 42%, var(--popover, var(--card, transparent)));
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
   font: inherit;
-  line-height: 1.2;
-  padding: 3px 7px;
-  border-radius: var(--radius-sm, 3px);
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.selection-chat-btn {
-  color: var(--muted-foreground, var(--vscode-descriptionForeground));
-}
-
-.selection-chat-btn:hover,
-.selection-comment-cancel:hover,
-.selection-comment-send:hover {
-  background: var(--muted, var(--vscode-list-hoverBackground));
+.selection-pill:hover {
   color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--muted, #888) 58%, var(--popover, transparent));
 }
 
-.selection-chat-btn[aria-pressed='true'],
-.selection-comment-send {
-  color: var(--primary, var(--vscode-focusBorder));
+.selection-pill[aria-pressed='true'],
+.selection-pill[data-copied='true'] {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: color-mix(in oklch, var(--muted, #888) 72%, var(--popover, transparent));
 }
 
-.selection-comment-send:disabled {
-  opacity: 0.45;
-  cursor: default;
-  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+.selection-pill svg {
+  display: block;
 }
 
-.selection-comment-composer:not([hidden]) {
+.selection-card:not([hidden]) {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 4px 2px 2px;
-  border-top: 1px solid var(--border, var(--vscode-widget-border));
+  gap: 10px;
+  min-width: 18.5rem;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--border, var(--vscode-widget-border));
+  border-radius: 14px;
+  background: var(--popover, var(--card, var(--vscode-editor-background)));
+  color: var(--popover-foreground, var(--foreground, var(--vscode-editor-foreground)));
+  box-shadow: 0 10px 32px color-mix(in oklch, var(--foreground, #000) 12%, transparent);
 }
 
-.selection-comment-input {
+.selection-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selection-card-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font-size: 0.85em;
+}
+
+.selection-card-title-plain {
+  font-weight: 600;
+}
+
+.selection-card-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.selection-card-icon-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  cursor: pointer;
+}
+
+.selection-card-icon-btn:hover,
+.selection-card-icon-btn[aria-pressed='true'] {
+  color: var(--foreground, var(--vscode-editor-foreground));
+  background: var(--muted, var(--vscode-list-hoverBackground));
+}
+
+.selection-card-input {
   box-sizing: border-box;
   width: 100%;
-  min-width: 16rem;
-  min-height: 3.2em;
+  min-height: 4.4em;
   resize: vertical;
   border: 1px solid var(--border, var(--vscode-widget-border));
-  border-radius: var(--radius-sm, 3px);
-  padding: 6px 7px;
+  border-radius: var(--radius-md, 8px);
+  padding: 8px 9px;
   background: var(--background, var(--vscode-editor-background));
   color: var(--foreground, var(--vscode-editor-foreground));
   font: inherit;
 }
 
-.selection-comment-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
+.selection-card[data-expanded='true'] .selection-card-input {
+  min-height: 10em;
 }
 
-.selection-format-btn {
-  appearance: none;
-  display: inline-flex;
+.selection-card-input:focus,
+.selection-card-input:focus-visible {
+  outline: none;
+  border-color: var(--primary, var(--vscode-focusBorder));
+  box-shadow: 0 0 0 1px var(--primary, var(--vscode-focusBorder));
+}
+
+.selection-card-foot {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.selection-card-hint {
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
+  font-size: 0.8em;
+}
+
+.selection-card-send {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 14px;
+  background: var(--primary, var(--vscode-button-background));
+  color: var(--primary-foreground, var(--vscode-button-foreground));
   font: inherit;
-  line-height: 1;
-  min-width: 22px;
-  min-height: 22px;
-  padding: 2px;
-  border-radius: var(--radius-sm, 3px);
+  line-height: 1.2;
   cursor: pointer;
 }
 
-.selection-format-icon {
-  display: block;
-}
-
-.selection-format-btn:hover {
-  background: var(--muted, var(--vscode-list-hoverBackground));
-  color: var(--foreground, var(--vscode-editor-foreground));
-}
-
-.selection-format-btn[aria-pressed='true'] {
-  color: var(--primary, var(--vscode-focusBorder));
-  background: color-mix(in oklch, var(--primary, #888) 18%, transparent);
+.selection-card-send:hover {
+  filter: brightness(1.06);
 }
 
 /*
@@ -803,11 +844,9 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
 .outline-twisty:focus-visible,
 .outline-icon-btn:focus-visible,
 .outline-backdrop:focus-visible,
-.selection-format-btn:focus-visible,
-.selection-chat-btn:focus-visible,
-.selection-comment-cancel:focus-visible,
-.selection-comment-send:focus-visible,
-.selection-comment-input:focus-visible {
+.selection-pill:focus-visible,
+.selection-card-icon-btn:focus-visible,
+.selection-card-send:focus-visible {
   outline: 2px solid var(--ring, var(--vscode-focusBorder));
   outline-offset: 2px;
 }
@@ -816,7 +855,8 @@ html.transitions-ready .outline-item,
 html.transitions-ready .outline-icon-btn,
 html.transitions-ready .outline-twisty,
 html.transitions-ready .atomic-notice,
-html.transitions-ready .selection-format-btn,
+html.transitions-ready .selection-pill,
+html.transitions-ready .selection-card-send,
 html.transitions-ready .atomic-notice-dismiss {
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
 }
@@ -826,7 +866,8 @@ html.transitions-ready .atomic-notice-dismiss {
   html.transitions-ready .outline-icon-btn,
   html.transitions-ready .outline-twisty,
   html.transitions-ready .atomic-notice,
-  html.transitions-ready .selection-format-btn,
+  html.transitions-ready .selection-pill,
+  html.transitions-ready .selection-card-send,
   html.transitions-ready .atomic-notice-dismiss {
     transition: none;
   }

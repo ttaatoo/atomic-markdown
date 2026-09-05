@@ -4,6 +4,7 @@ import {
   CHAT_FALLBACK_NEW_COMMAND,
   CHAT_FALLBACK_PASTE_COMMAND,
   CHAT_OPEN_COMMAND,
+  GLOBAL_FILE_FENCE_MAX_CHARS,
   buildChatPrompt,
   lineRangeFromLfOffsets,
   openCursorChat,
@@ -32,12 +33,13 @@ describe('lineRangeFromLfOffsets', () => {
 });
 
 describe('buildChatPrompt', () => {
-  it('omits the Comment section for Add to Chat', () => {
+  it('omits the Comment section when the comment is empty', () => {
     const prompt = buildChatPrompt({
       path: 'samples/welcome.md',
       startLine: 10,
       endLine: 10,
       text: 'Raw markdown is the source of truth.',
+      comment: '   ',
     });
     assert.equal(
       prompt,
@@ -73,22 +75,95 @@ describe('buildChatPrompt', () => {
       ].join('\n'),
     );
   });
+
+  it('builds a global prompt with a file fence when the document is small', () => {
+    const prompt = buildChatPrompt({
+      mode: 'global',
+      path: 'doc.md',
+      text: '# Hi\n',
+      comment: 'overview',
+    });
+    assert.equal(
+      prompt,
+      ['Comment: overview', '', 'File: doc.md', '', '```markdown', '# Hi\n', '```'].join('\n'),
+    );
+  });
+
+  it('builds a path-only global prompt when there is no file body', () => {
+    const prompt = buildChatPrompt({
+      mode: 'global',
+      path: 'big.md',
+    });
+    assert.equal(prompt, ['File: big.md', '', 'Global comment on file'].join('\n'));
+  });
 });
 
 describe('planSendToChat', () => {
-  it('uses document lines and ignores comment unless mode is comment', () => {
+  it('keeps a selection comment when provided', () => {
     const planned = planSendToChat({
       mode: 'selection',
       text: 'beta',
       from: 6,
       to: 10,
-      comment: 'should be omitted',
+      comment: 'please look',
       path: 'doc.md',
       documentText: 'alpha\nbeta\ngamma\n',
     });
     assert.deepEqual({ startLine: planned.startLine, endLine: planned.endLine }, { startLine: 2, endLine: 2 });
-    assert.equal(planned.prompt.includes('Comment:'), false);
+    assert.match(planned.prompt, /Comment: please look/);
     assert.match(planned.prompt, /File: doc\.md:2-2/);
+  });
+
+  it('omits Comment for an empty selection send', () => {
+    const planned = planSendToChat({
+      mode: 'selection',
+      text: 'beta',
+      from: 6,
+      to: 10,
+      comment: '',
+      path: 'doc.md',
+      documentText: 'alpha\nbeta\ngamma\n',
+    });
+    assert.equal(planned.prompt.includes('Comment:'), false);
+  });
+
+  it('fences a short file for global mode and skips the fence when too long', () => {
+    const short = planSendToChat({
+      mode: 'global',
+      text: '',
+      from: 0,
+      to: 0,
+      path: 'doc.md',
+      documentText: 'hello\n',
+    });
+    assert.match(short.prompt, /```markdown/);
+    assert.match(short.prompt, /hello/);
+
+    const longDoc = 'x'.repeat(GLOBAL_FILE_FENCE_MAX_CHARS + 1);
+    const long = planSendToChat({
+      mode: 'global',
+      text: '',
+      from: 0,
+      to: 0,
+      path: 'huge.md',
+      documentText: longDoc,
+    });
+    assert.equal(long.prompt.includes('```markdown'), false);
+    assert.match(long.prompt, /Global comment on file/);
+  });
+
+  it('allows an empty global comment', () => {
+    const planned = planSendToChat({
+      mode: 'global',
+      text: '',
+      from: 0,
+      to: 0,
+      comment: '   ',
+      path: 'doc.md',
+      documentText: 'hello\n',
+    });
+    assert.equal(planned.prompt.includes('Comment:'), false);
+    assert.match(planned.prompt, /File: doc\.md/);
   });
 });
 

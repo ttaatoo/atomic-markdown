@@ -1,17 +1,18 @@
 import { toLineFeed } from './text.ts';
+import type { SendToChatMode } from './protocol.ts';
 
 export const CHAT_OPEN_COMMAND = 'workbench.action.chat.open';
 export const CHAT_FALLBACK_NEW_COMMAND = 'composer.newAgentChat';
 export const CHAT_FALLBACK_PASTE_COMMAND = 'editor.action.clipboardPasteAction';
-
-export type SendToChatMode = 'selection' | 'comment';
+export const GLOBAL_FILE_FENCE_MAX_CHARS = 8000;
 
 export interface ChatPromptInput {
   path: string;
-  startLine: number;
-  endLine: number;
-  text: string;
+  startLine?: number;
+  endLine?: number;
+  text?: string;
   comment?: string;
+  mode?: SendToChatMode;
 }
 
 export interface LineRange {
@@ -37,12 +38,24 @@ export function lineRangeFromLfOffsets(text: string, from: number, to: number): 
 
 export function buildChatPrompt(input: ChatPromptInput): string {
   const comment = input.comment?.trim();
+  const mode = input.mode === 'global' ? 'global' : 'selection';
   const lines: string[] = [];
   if (comment) {
     lines.push(`Comment: ${comment}`, '');
   }
-  lines.push(`File: ${input.path}:${input.startLine}-${input.endLine}`, '');
-  lines.push('```markdown', input.text, '```');
+  if (mode === 'global') {
+    lines.push(`File: ${input.path}`, '');
+    if (input.text) {
+      lines.push('```markdown', input.text, '```');
+    } else {
+      lines.push('Global comment on file');
+    }
+    return lines.join('\n');
+  }
+  const start = input.startLine ?? 1;
+  const end = input.endLine ?? start;
+  lines.push(`File: ${input.path}:${start}-${end}`, '');
+  lines.push('```markdown', input.text ?? '', '```');
   return lines.join('\n');
 }
 
@@ -55,11 +68,27 @@ export function planSendToChat(input: {
   path: string;
   documentText: string;
 }): { prompt: string } & LineRange {
+  const comment = input.comment?.trim() || undefined;
+  if (input.mode === 'global') {
+    const full = toLineFeed(input.documentText);
+    const fence = full.length <= GLOBAL_FILE_FENCE_MAX_CHARS;
+    const endLine = Math.max(1, lineNumberAt(full, full.length));
+    return {
+      startLine: 1,
+      endLine,
+      prompt: buildChatPrompt({
+        mode: 'global',
+        path: input.path,
+        comment,
+        text: fence ? full : undefined,
+      }),
+    };
+  }
   const range = lineRangeFromLfOffsets(input.documentText, input.from, input.to);
-  const comment = input.mode === 'comment' ? input.comment : undefined;
   return {
     ...range,
     prompt: buildChatPrompt({
+      mode: 'selection',
       path: input.path,
       startLine: range.startLine,
       endLine: range.endLine,
