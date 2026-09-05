@@ -32,8 +32,10 @@ export function quoteSelectionPreview(text: string, max = 28): string {
   if (!one) {
     return '""';
   }
-  const sliced = one.length > max ? `${one.slice(0, Math.max(1, max - 1))}…` : one;
-  return `"${sliced}"`;
+  if (one.length <= max) {
+    return `"${one}"`;
+  }
+  return `"${one.slice(0, Math.max(1, max - 1)).trimEnd()}…"`;
 }
 
 export function sendShortcutHint(platform: string): string {
