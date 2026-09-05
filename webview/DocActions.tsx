@@ -1,19 +1,22 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { sendShortcutHint } from './selectionFormatTooltip';
-import { requestCopyText, requestSendToChat } from './sendToChat';
+import { requestSendToChat } from './sendToChat';
 import { currentEditorView } from './sync';
 
 function currentMarkdown(): string {
   return currentEditorView()?.state.doc.toString() ?? '';
 }
 
-export function DocActions(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { open, onOpenChange } = props;
+export function DocActions(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  copied: boolean;
+  onCopyDocument: () => void;
+}) {
+  const { open, onOpenChange, copied, onCopyDocument } = props;
   const [comment, setComment] = useState('');
   const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const copiedTimer = useRef<number | undefined>(undefined);
   const titleId = useId();
   const platform = typeof navigator === 'undefined' ? '' : navigator.platform;
 
@@ -22,14 +25,6 @@ export function DocActions(props: { open: boolean; onOpenChange: (open: boolean)
       inputRef.current?.focus();
     }
   }, [open]);
-
-  useEffect(() => {
-    return () => {
-      if (copiedTimer.current) {
-        window.clearTimeout(copiedTimer.current);
-      }
-    };
-  }, []);
 
   const sendGlobal = () => {
     const text = currentMarkdown();
@@ -40,17 +35,6 @@ export function DocActions(props: { open: boolean; onOpenChange: (open: boolean)
       to: text.length,
       comment,
     });
-  };
-
-  const copyDocument = () => {
-    requestCopyText(currentMarkdown());
-    setCopied(true);
-    if (copiedTimer.current) {
-      window.clearTimeout(copiedTimer.current);
-    }
-    copiedTimer.current = window.setTimeout(() => {
-      setCopied(false);
-    }, 1200);
   };
 
   return (
@@ -71,7 +55,7 @@ export function DocActions(props: { open: boolean; onOpenChange: (open: boolean)
           className="doc-pill"
           data-pill="copy"
           data-copied={copied ? 'true' : 'false'}
-          onClick={copyDocument}
+          onClick={onCopyDocument}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
           <span>{copied ? 'Copied' : 'Copy'}</span>

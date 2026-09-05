@@ -8,6 +8,7 @@ import type { HostToWebview } from '../src/protocol';
 import { markdownForMount, takeNewerMarkdown, type HostMarkdown } from './hostMarkdown';
 import { rewriteImagesIn, type ImageResolveOptions } from './images';
 import { isFindOpenShortcut, shouldWindowCloseFind } from './findEscape';
+import { DOCUMENT_COPIED_FEEDBACK_MS } from '../src/copyDocument.ts';
 import { DocActions } from './DocActions';
 import { closeCommentComposer } from './selectionFormatTooltip';
 import { setCopyTextHandler, setSendToChatHandler } from './sendToChat';
@@ -60,6 +61,8 @@ export function App() {
   const [notice, setNotice] = useState<string | undefined>();
   const [globalCommentOpen, setGlobalCommentOpen] = useState(false);
   const globalCommentOpenRef = useRef(false);
+  const [documentCopied, setDocumentCopied] = useState(false);
+  const documentCopiedTimer = useRef<number | undefined>(undefined);
   const [outlineNodes, setOutlineNodes] = useState<OutlineNode[]>([]);
   const [collapsedFroms, setCollapsedFroms] = useState<Set<number>>(() => new Set());
   const [activeHeadingFrom, setActiveHeadingFrom] = useState<number | undefined>();
@@ -202,6 +205,22 @@ export function App() {
           pendingImages.current.delete(message.requestId);
           setNotice(hostFailureNotice(message.message));
           break;
+        case 'documentCopied':
+          if (documentCopiedTimer.current) {
+            window.clearTimeout(documentCopiedTimer.current);
+            documentCopiedTimer.current = undefined;
+          }
+          if (message.ok) {
+            setDocumentCopied(true);
+            documentCopiedTimer.current = window.setTimeout(() => {
+              setDocumentCopied(false);
+              documentCopiedTimer.current = undefined;
+            }, DOCUMENT_COPIED_FEEDBACK_MS);
+          } else {
+            setDocumentCopied(false);
+            setNotice(hostFailureNotice(message.message ?? "Couldn't copy the document."));
+          }
+          break;
       }
     };
 
@@ -315,6 +334,14 @@ export function App() {
     return () => {
       setSendToChatHandler(undefined);
       setCopyTextHandler(undefined);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (documentCopiedTimer.current) {
+        window.clearTimeout(documentCopiedTimer.current);
+      }
     };
   }, []);
 
@@ -500,7 +527,12 @@ export function App() {
             />
           ) : null}
           <div className="editor-pane">
-            <DocActions open={globalCommentOpen} onOpenChange={setGlobalCommentOpen} />
+            <DocActions
+              open={globalCommentOpen}
+              onOpenChange={setGlobalCommentOpen}
+              copied={documentCopied}
+              onCopyDocument={() => vscodeApi.postMessage({ type: 'copyDocument' })}
+            />
             <AtomicCodeMirrorEditor
               documentId={session.uri}
               markdownSource={session.text}

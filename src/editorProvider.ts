@@ -18,7 +18,8 @@ import {
   untitledImageError,
 } from './imageSave';
 import type { HostToWebview, WebviewToHost } from './protocol';
-import { isCopyTextMessage, isFormatAction, isSendToChatMessage } from './protocol';
+import { isCopyDocumentMessage, isCopyTextMessage, isFormatAction, isSendToChatMessage } from './protocol';
+import { planCopyDocument, writeDocumentCopy } from './copyDocument';
 import { openCursorChat, planSendToChat } from './sendToChat';
 import { addSession, removeSession } from './sessionMap';
 import {
@@ -279,7 +280,25 @@ export class AtomicMarkdownEditorProvider implements vscode.CustomTextEditorProv
           await vscode.env.clipboard.writeText(message.text);
         }
         return;
+      case 'copyDocument':
+        if (isCopyDocumentMessage(message)) {
+          await this.copyDocument(document, session);
+        }
+        return;
     }
+  }
+
+  private async copyDocument(
+    document: vscode.TextDocument,
+    session: DocumentSession,
+  ): Promise<void> {
+    const planned = planCopyDocument({ documentText: document.getText() });
+    const result = await writeDocumentCopy(planned.text, (text) => vscode.env.clipboard.writeText(text));
+    if (result.ok) {
+      this.post(session, { type: 'documentCopied', ok: true });
+      return;
+    }
+    this.post(session, { type: 'documentCopied', ok: false, message: result.message });
   }
 
   private async sendSelectionToChat(

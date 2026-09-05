@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isCopyTextMessage, isFormatAction, isSendToChatMessage } from './protocol.ts';
+import {
+  isCopyDocumentMessage,
+  isCopyTextMessage,
+  isDocumentCopiedMessage,
+  isFormatAction,
+  isSendToChatMessage,
+} from './protocol.ts';
 
 describe('isFormatAction', () => {
   it('accepts known formatting actions only', () => {
@@ -71,5 +77,23 @@ describe('isCopyTextMessage', () => {
     assert.equal(isCopyTextMessage({ type: 'copyText', text: '' }), true);
     assert.equal(isCopyTextMessage({ type: 'copyText' }), false);
     assert.equal(isCopyTextMessage({ type: 'sendToChat', text: 'hello' }), false);
+  });
+});
+
+describe('copyDocument protocol', () => {
+  it('accepts a payload-less copyDocument request', () => {
+    assert.equal(isCopyDocumentMessage({ type: 'copyDocument' }), true);
+    assert.equal(isCopyDocumentMessage({ type: 'copyText', text: 'no' }), false);
+    assert.equal(isCopyDocumentMessage({ type: 'copyDocument', text: 'ignored' }), true);
+  });
+
+  it('accepts documentCopied success and failure acks', () => {
+    assert.equal(isDocumentCopiedMessage({ type: 'documentCopied', ok: true }), true);
+    assert.equal(
+      isDocumentCopiedMessage({ type: 'documentCopied', ok: false, message: "Couldn't copy the document." }),
+      true,
+    );
+    assert.equal(isDocumentCopiedMessage({ type: 'documentCopied' }), false);
+    assert.equal(isDocumentCopiedMessage({ type: 'documentCopied', ok: 'yes' }), false);
   });
 });

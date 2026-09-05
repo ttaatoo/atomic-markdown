@@ -13,6 +13,13 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["webview/**/*.ts", "webview/**/*.tsx", "src/protocol.ts", "src/themeSetting.ts", "src/appearance.ts"],
+  "include": [
+    "webview/**/*.ts",
+    "webview/**/*.tsx",
+    "src/protocol.ts",
+    "src/themeSetting.ts",
+    "src/appearance.ts",
+    "src/copyDocument.ts"
+  ],
   "exclude": ["webview/**/*.test.ts"]
 }

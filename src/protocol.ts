@@ -46,6 +46,16 @@ export type CopyTextMessage = {
   text: string;
 };
 
+export type CopyDocumentMessage = {
+  type: 'copyDocument';
+};
+
+export type DocumentCopiedMessage = {
+  type: 'documentCopied';
+  ok: boolean;
+  message?: string;
+};
+
 export function isSendToChatMessage(value: unknown): value is SendToChatMessage {
   if (!value || typeof value !== 'object') {
     return false;
@@ -81,6 +91,24 @@ export function isCopyTextMessage(value: unknown): value is CopyTextMessage {
   );
 }
 
+export function isCopyDocumentMessage(value: unknown): value is CopyDocumentMessage {
+  return Boolean(value && typeof value === 'object' && (value as { type?: unknown }).type === 'copyDocument');
+}
+
+export function isDocumentCopiedMessage(value: unknown): value is DocumentCopiedMessage {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const message = value as Record<string, unknown>;
+  if (message.type !== 'documentCopied' || typeof message.ok !== 'boolean') {
+    return false;
+  }
+  if (message.message !== undefined && typeof message.message !== 'string') {
+    return false;
+  }
+  return true;
+}
+
 export type WebviewToHost =
   | { type: 'ready' }
   | { type: 'edit'; text: string; generation: number }
@@ -89,7 +117,8 @@ export type WebviewToHost =
   | { type: 'saveImage'; requestId: string; mime: string; basename?: string; base64: string }
   | { type: 'findOpenChanged'; open: boolean }
   | SendToChatMessage
-  | CopyTextMessage;
+  | CopyTextMessage
+  | CopyDocumentMessage;
 
 export type HostToWebview =
   | {
@@ -113,4 +142,5 @@ export type HostToWebview =
   | { type: 'format'; action: FormatAction }
   | { type: 'toggleOutline' }
   | { type: 'imageSaved'; requestId: string; markdown: string }
-  | { type: 'imageSaveFailed'; requestId: string; message: string };
+  | { type: 'imageSaveFailed'; requestId: string; message: string }
+  | DocumentCopiedMessage;
