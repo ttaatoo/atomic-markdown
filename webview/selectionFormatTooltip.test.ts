@@ -6,10 +6,13 @@ import { fileURLToPath } from 'node:url';
 import { EditorState } from '@codemirror/state';
 import { showTooltip } from '@codemirror/view';
 import {
+  closeCommentComposer,
   formatTooltipForState,
+  registerComposerCloser,
   selectionFormatTooltip,
   selectionFormatTooltipField,
   selectionMenuFlags,
+  selectionMenuHiddenState,
   shouldShowFormatTooltip,
   tooltipAnchorRect,
 } from './selectionFormatTooltip.ts';
@@ -55,10 +58,43 @@ describe('selectionFormatTooltip field', () => {
   it('keeps chat actions in reading mode and hides format icons', () => {
     const reading = stateWithSelection({ readOnly: true });
     assert.equal(shouldShowFormatTooltip(reading), true);
+    assert.deepEqual(selectionMenuFlags({ readOnly: true, selection: { main: { empty: false } } }), {
+      show: true,
+      showFormat: false,
+    });
     assert.deepEqual(selectionMenuFlags(reading), { show: true, showFormat: false });
     const tooltip = reading.field(selectionFormatTooltipField);
     assert.ok(tooltip);
     assert.equal(tooltip.pos, FROM);
+  });
+
+  it('starts the composer closed and only shows format when not read-only', () => {
+    assert.deepEqual(selectionMenuHiddenState(true), {
+      formatGroup: false,
+      sep: false,
+      composer: true,
+    });
+    assert.deepEqual(selectionMenuHiddenState(false), {
+      formatGroup: true,
+      sep: true,
+      composer: true,
+    });
+  });
+
+  it('closes an open composer via closeCommentComposer (window Escape path)', () => {
+    let open = true;
+    const unreg = registerComposerCloser(() => {
+      if (!open) {
+        return false;
+      }
+      open = false;
+      return true;
+    });
+    assert.equal(closeCommentComposer(), true);
+    assert.equal(open, false);
+    assert.equal(closeCommentComposer(), false);
+    unreg();
+    assert.equal(closeCommentComposer(), false);
   });
 
   it('drops the tooltip after the selection collapses', () => {
@@ -108,6 +144,10 @@ describe('CM tooltip is wired; React overlay is gone', () => {
     assert.match(sync, /selectionFormatTooltip\(\)/);
     assert.match(css, /\.cm-tooltip\.selection-format-bar/);
     assert.match(css, /\.selection-format-bar/);
+    assert.match(css, /\.selection-comment-composer:not\(\[hidden\]\)/);
+    assert.match(css, /\.selection-format-group:not\(\[hidden\]\)/);
+    assert.equal(/\.selection-comment-composer\s*\{/.test(css), false);
+    assert.equal(/\.selection-format-group\s*\{/.test(css), false);
   });
 
   it('notifies view-update listeners on every ViewUpdate', () => {

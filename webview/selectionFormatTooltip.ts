@@ -38,6 +38,19 @@ export function selectionMenuFlags(state: { readOnly: boolean; selection: { main
   return { show, showFormat: show && !state.readOnly };
 }
 
+/** Create-time `hidden` flags. Composer is always closed until Add Comment. */
+export function selectionMenuHiddenState(showFormat: boolean): {
+  formatGroup: boolean;
+  sep: boolean;
+  composer: boolean;
+} {
+  return {
+    formatGroup: !showFormat,
+    sep: !showFormat,
+    composer: true,
+  };
+}
+
 /** Non-empty CM selection — format icons only in edit mode. */
 export function shouldShowFormatTooltip(state: EditorState): boolean {
   return selectionMenuFlags(state).show;
@@ -100,14 +113,12 @@ export function isCommentComposerOpen(): boolean {
   return composerOpen;
 }
 
+/** Window-level Escape (App.tsx) — works even when the editor, not the textarea, has focus. */
 export function closeCommentComposer(): boolean {
-  if (!composerOpen || !composerCloser) {
-    return false;
-  }
-  return composerCloser();
+  return composerCloser?.() ?? false;
 }
 
-function registerComposerCloser(close: () => boolean): () => void {
+export function registerComposerCloser(close: () => boolean): () => void {
   composerCloser = close;
   return () => {
     if (composerCloser === close) {
@@ -129,6 +140,8 @@ export function createSelectionFormatBarElement(
   },
 ): HTMLDivElement {
   const showFormat = options?.showFormat !== false;
+  const initialHidden = selectionMenuHiddenState(showFormat);
+  composerOpen = false;
   const bar = document.createElement('div');
   bar.className = 'selection-format-bar';
   bar.setAttribute('role', 'toolbar');
@@ -146,7 +159,7 @@ export function createSelectionFormatBarElement(
 
   const formatGroup = document.createElement('div');
   formatGroup.className = 'selection-format-group';
-  formatGroup.hidden = !showFormat;
+  formatGroup.hidden = initialHidden.formatGroup;
   for (const action of SELECTION_FORMAT_ACTIONS) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -170,7 +183,7 @@ export function createSelectionFormatBarElement(
   const sep = document.createElement('span');
   sep.className = 'selection-format-sep';
   sep.setAttribute('aria-hidden', 'true');
-  sep.hidden = !showFormat;
+  sep.hidden = initialHidden.sep;
 
   const addChat = document.createElement('button');
   addChat.type = 'button';
@@ -193,7 +206,7 @@ export function createSelectionFormatBarElement(
 
   const composer = document.createElement('div');
   composer.className = 'selection-comment-composer';
-  composer.hidden = true;
+  composer.hidden = initialHidden.composer;
 
   const textarea = document.createElement('textarea');
   textarea.className = 'selection-comment-input';

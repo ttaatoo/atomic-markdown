@@ -475,7 +475,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   gap: 2px;
 }
 
-.selection-format-group {
+.selection-format-group:not([hidden]) {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -525,7 +525,7 @@ html.theme-plannotator .atomic-cm-editor .cm-searchMatch.cm-searchMatch-selected
   color: var(--muted-foreground, var(--vscode-descriptionForeground));
 }
 
-.selection-comment-composer {
+.selection-comment-composer:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 6px;
